@@ -46,12 +46,16 @@ class AuthProvider with ChangeNotifier {
     _error = null;
 
     try {
-      await _firebaseService.signUpWithEmailAndPassword(email, password);
+      debugPrint('Attempting to sign up user with email: $email');
+      final userCredential = await _firebaseService.signUpWithEmailAndPassword(email, password);
+      debugPrint('Sign up successful: ${userCredential.user?.uid}');
       _setLoading(false);
       return true;
     } catch (e) {
+      debugPrint('Sign up error: $e');
       _setLoading(false);
       _error = _getReadableAuthError(e);
+      notifyListeners();
       return false;
     }
   }
@@ -104,9 +108,11 @@ class AuthProvider with ChangeNotifier {
 
   // Helper method to convert Firebase auth errors to readable messages
   String _getReadableAuthError(dynamic error) {
+    debugPrint('Processing auth error: $error');
     String errorMessage = error.toString();
 
     if (error is FirebaseAuthException) {
+      debugPrint('Firebase Auth Exception - Code: ${error.code}, Message: ${error.message}');
       switch (error.code) {
         case 'user-not-found':
           errorMessage = 'No user found with this email.';
@@ -118,7 +124,7 @@ class AuthProvider with ChangeNotifier {
           errorMessage = 'The email address is already in use.';
           break;
         case 'weak-password':
-          errorMessage = 'The password is too weak.';
+          errorMessage = 'The password is too weak. Use at least 6 characters.';
           break;
         case 'invalid-email':
           errorMessage = 'The email address is invalid.';
@@ -130,17 +136,38 @@ class AuthProvider with ChangeNotifier {
           errorMessage = 'Too many requests. Try again later.';
           break;
         case 'operation-not-allowed':
-          errorMessage = 'Operation not allowed.';
+          errorMessage = 'Email/password authentication is not enabled. Please contact support.';
           break;
         case 'network-request-failed':
-          errorMessage = 'Network error. Check your connection.';
+          errorMessage = 'Network error. Check your internet connection.';
+          break;
+        case 'invalid-credential':
+          errorMessage = 'Invalid credentials provided.';
+          break;
+        case 'credential-already-in-use':
+          errorMessage = 'This credential is already associated with another account.';
+          break;
+        case 'requires-recent-login':
+          errorMessage = 'Please log in again to perform this action.';
           break;
         default:
-          errorMessage = 'An error occurred: ${error.code}';
+          errorMessage = 'Authentication error: ${error.code}\nMessage: ${error.message ?? "Unknown error"}';
           break;
+      }
+    } else {
+      // Handle other types of errors
+      if (errorMessage.contains('PlatformException')) {
+        errorMessage = 'Platform error occurred. Please try again.';
+      } else if (errorMessage.contains('SocketException')) {
+        errorMessage = 'No internet connection. Please check your network.';
+      } else if (errorMessage.contains('TimeoutException')) {
+        errorMessage = 'Request timed out. Please try again.';
+      } else {
+        errorMessage = 'An unexpected error occurred: ${errorMessage.length > 100 ? errorMessage.substring(0, 100) + "..." : errorMessage}';
       }
     }
 
+    debugPrint('Readable error message: $errorMessage');
     return errorMessage;
   }
 
