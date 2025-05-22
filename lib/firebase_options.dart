@@ -41,8 +41,8 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCLEMsUT7EqMOzaY0IMfhUevhvDEFF2K7Q',
-    appId: '1:811543386253:android:3dbae7c2a9913d44f7aac4',
+    apiKey: 'AIzaSyAXZQkIuqKHrCLrsQ0Yoakv49mIEEBkhG0',
+    appId: '1:811543386253:android:00c1ca82a9aab100f7aac4',
     messagingSenderId: '811543386253',
     projectId: 'medimatch-f446c',
     databaseURL: 'https://medimatch-f446c-default-rtdb.firebaseio.com',
@@ -58,7 +58,7 @@ class DefaultFirebaseOptions {
     storageBucket: 'medimatch-f446c.firebasestorage.app',
     iosClientId:
         '811543386253-abcdefghijklmnopqrstuvwxyz.apps.googleusercontent.com',
-    iosBundleId: 'com.example.medimatch',
+    iosBundleId: 'com.health.medimatch',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
@@ -70,7 +70,7 @@ class DefaultFirebaseOptions {
     storageBucket: 'medimatch-f446c.firebasestorage.app',
     iosClientId:
         '811543386253-abcdefghijklmnopqrstuvwxyz.apps.googleusercontent.com',
-    iosBundleId: 'com.example.medimatch',
+    iosBundleId: 'com.health.medimatch',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(

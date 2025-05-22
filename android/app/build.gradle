@@ -29,7 +29,7 @@ if (flutterVersionName == null) {
 }
 
 android {
-    namespace "com.example.medimatch"
+    namespace "com.health.medimatch"
     compileSdkVersion flutter.compileSdkVersion
     ndkVersion "27.0.12077973"
 
@@ -48,7 +48,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.example.medimatch"
+        applicationId "com.health.medimatch"
         minSdkVersion 26  // Required for tflite_flutter
         targetSdkVersion flutter.targetSdkVersion
         versionCode flutterVersionCode.toInteger()

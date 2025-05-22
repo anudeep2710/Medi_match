@@ -1,33 +1,34 @@
 {
   "project_info": {
     "project_number": "811543386253",
+    "firebase_url": "https://medimatch-f446c-default-rtdb.firebaseio.com",
     "project_id": "medimatch-f446c",
     "storage_bucket": "medimatch-f446c.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:811543386253:android:3dbae7c2a9913d44f7aac4",
+        "mobilesdk_app_id": "1:811543386253:android:00c1ca82a9aab100f7aac4",
         "android_client_info": {
-          "package_name": "com.example.medimatch"
+          "package_name": "com.health.medimatch"
         }
       },
       "oauth_client": [
         {
-          "client_id": "811543386253-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com",
+          "client_id": "811543386253-1f4lu6pfquc9694br3vvpenvaj9ei715.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyCLEMsUT7EqMOzaY0IMfhUevhvDEFF2K7Q"
+          "current_key": "AIzaSyAXZQkIuqKHrCLrsQ0Yoakv49mIEEBkhG0"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "811543386253-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com",
+              "client_id": "811543386253-1f4lu6pfquc9694br3vvpenvaj9ei715.apps.googleusercontent.com",
               "client_type": 3
             }
           ]
