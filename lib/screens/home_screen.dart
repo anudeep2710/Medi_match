@@ -4,12 +4,13 @@ import 'package:intl/intl.dart';
 import 'package:medimatch/models/prescription.dart';
 import 'package:medimatch/providers/prescription_provider.dart';
 import 'package:medimatch/screens/scan_prescription_screen.dart';
-import 'package:medimatch/screens/scan_handwritten_prescription_screen.dart';
+
 import 'package:medimatch/screens/reminders_screen.dart';
 import 'package:medimatch/screens/pharmacy_screen.dart';
 import 'package:medimatch/screens/settings_screen.dart';
 import 'package:medimatch/screens/donation/medication_donation_list_screen.dart';
 import 'package:medimatch/screens/chat/chat_list_screen.dart';
+import 'package:medimatch/screens/medication_analysis_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -48,37 +49,65 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       body: _buildBody(),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.document_scanner),
-            label: 'Scan',
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.white.withOpacity(0.1),
+              Colors.white.withOpacity(0.05),
+            ],
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.medication),
-            label: 'Medicines',
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.notifications),
-            label: 'Reminders',
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: const Offset(0, -5),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.local_pharmacy),
-            label: 'Pharmacy',
+          child: BottomNavigationBar(
+            currentIndex: _selectedIndex,
+            onTap: _onItemTapped,
+            type: BottomNavigationBarType.fixed,
+            backgroundColor: Colors.white.withOpacity(0.9),
+            selectedItemColor: Theme.of(context).colorScheme.primary,
+            unselectedItemColor: Colors.grey.shade600,
+            elevation: 0,
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home_rounded),
+                label: 'Home',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.document_scanner_rounded),
+                label: 'Scan',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.medication_rounded),
+                label: 'Medicines',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.notifications_rounded),
+                label: 'Reminders',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.local_pharmacy_rounded),
+                label: 'Pharmacy',
+              ),
+            ],
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.volunteer_activism),
-            label: 'Donate',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.chat),
-            label: 'Chat',
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -95,10 +124,6 @@ class _HomeScreenState extends State<HomeScreen> {
         return _buildRemindersTab();
       case 4:
         return _buildPharmacyTab();
-      case 5:
-        return _buildDonationTab();
-      case 6:
-        return _buildChatTab();
       default:
         return _buildHomeTab();
     }
@@ -199,54 +224,57 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 final List<Map<String, dynamic>> quickActions = [
                   {
-                    'icon': Icons.medication,
-                    'title': 'My Medicines',
-                    'color': Colors.blue,
-                    'onTap': () => setState(() => _selectedIndex = 2),
-                  },
-                  {
-                    'icon': Icons.notifications_active,
-                    'title': 'Reminders',
-                    'color': Colors.orange,
-                    'onTap': () => setState(() => _selectedIndex = 3),
-                  },
-                  {
-                    'icon': Icons.local_pharmacy,
-                    'title': 'Nearby Pharmacies',
-                    'color': Colors.green,
-                    'onTap': () => setState(() => _selectedIndex = 4),
-                  },
-                  {
-                    'icon': Icons.volunteer_activism,
+                    'icon': Icons.volunteer_activism_rounded,
                     'title': 'Donate Medicines',
                     'color': Colors.pink,
-                    'onTap': () => setState(() => _selectedIndex = 5),
-                  },
-                  {
-                    'icon': Icons.chat,
-                    'title': 'Chat',
-                    'color': Colors.teal,
-                    'onTap': () => setState(() => _selectedIndex = 6),
-                  },
-                  {
-                    'icon': Icons.draw,
-                    'title': 'Scan Handwritten Prescription',
-                    'color': Colors.red,
                     'onTap': () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder:
-                              (context) =>
-                                  const ScanHandwrittenPrescriptionScreen(),
+                          builder: (context) => const MedicationDonationListScreen(),
                         ),
                       );
                     },
                   },
                   {
-                    'icon': Icons.settings,
+                    'icon': Icons.chat_rounded,
+                    'title': 'Chat',
+                    'color': Colors.teal,
+                    'onTap': () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ChatListScreen(),
+                        ),
+                      );
+                    },
+                  },
+
+                  {
+                    'icon': Icons.analytics_rounded,
+                    'title': 'Medicine Analysis',
+                    'color': Colors.deepPurple,
+                    'onTap': () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const MedicationAnalysisScreen(),
+                        ),
+                      );
+                    },
+                  },
+                  {
+                    'icon': Icons.health_and_safety_rounded,
+                    'title': 'Health Tips',
+                    'color': Colors.green,
+                    'onTap': () {
+                      _showHealthTipsDialog();
+                    },
+                  },
+                  {
+                    'icon': Icons.settings_rounded,
                     'title': 'Settings',
-                    'color': Colors.purple,
+                    'color': Colors.grey,
                     'onTap': () {
                       Navigator.push(
                         context,
@@ -282,39 +310,101 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
 
             const SizedBox(height: 24),
-            const Text(
-              'Health Tips',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
 
-            // Health Tips Card
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.lightbulb, color: Colors.amber, size: 24),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Tip of the Day',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Remember to take your medications at the same time each day to maintain consistent levels in your bloodstream.',
-                      style: TextStyle(fontSize: 16),
-                    ),
+            // AI Health Assistant Card
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.green.withOpacity(0.1),
+                    Colors.blue.withOpacity(0.1),
                   ],
                 ),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.2),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 15,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.psychology_rounded,
+                          color: Colors.green,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'AI Health Assistant',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              'Get personalized health tips',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Scan your prescription to receive AI-powered health tips and medication guidance tailored specifically for you.',
+                    style: TextStyle(fontSize: 14),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _selectedIndex = 1; // Switch to scan tab
+                        });
+                      },
+                      icon: const Icon(Icons.document_scanner_rounded),
+                      label: const Text('Scan Prescription'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -329,34 +419,138 @@ class _HomeScreenState extends State<HomeScreen> {
     required Color color,
     required VoidCallback onTap,
   }) {
-    return Card(
-      color: color.withAlpha(25),
-      elevation: 2,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 28, color: color),
-              const SizedBox(height: 8),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  title,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: color,
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withOpacity(0.2),
+            Colors.white.withOpacity(0.1),
+          ],
+        ),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.2),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, size: 24, color: color),
+                ),
+                const SizedBox(height: 8),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
+      ),
+    );
+  }
+
+  void _showHealthTipsDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: Row(
+          children: [
+            Icon(
+              Icons.health_and_safety_rounded,
+              color: Colors.green,
+              size: 28,
+            ),
+            const SizedBox(width: 12),
+            const Text('Health Tips'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'To get personalized health tips based on your medications:',
+              style: TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.blue.withOpacity(0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.document_scanner_rounded,
+                    color: Colors.blue,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'Scan a prescription to receive AI-powered health tips tailored to your medications',
+                      style: TextStyle(fontSize: 14),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Got it'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() {
+                _selectedIndex = 1; // Switch to scan tab
+              });
+            },
+            child: const Text('Scan Now'),
+          ),
+        ],
       ),
     );
   }
@@ -572,13 +766,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return const PharmacyScreen();
   }
 
-  Widget _buildDonationTab() {
-    return const MedicationDonationListScreen();
-  }
 
-  Widget _buildChatTab() {
-    return const ChatListScreen();
-  }
 
   void _onItemTapped(int index) {
     setState(() {

@@ -250,16 +250,42 @@ class _PharmacyScreenState extends State<PharmacyScreen> {
     final pharmacies = pharmacyProvider.pharmacies;
 
     return Scaffold(
+      backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         title: const Text('Nearby Pharmacies'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Theme.of(context).colorScheme.primary.withOpacity(0.8),
+                Theme.of(context).colorScheme.secondary.withOpacity(0.8),
+              ],
+            ),
+          ),
+        ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed:
-                pharmacyProvider.isLoading
-                    ? null
-                    : () => pharmacyProvider.findNearbyPharmacies(),
-            tooltip: 'Refresh',
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: Colors.white.withOpacity(0.2),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.refresh_rounded),
+              onPressed: pharmacyProvider.isLoading
+                  ? null
+                  : () => pharmacyProvider.findNearbyPharmacies(),
+              tooltip: 'Refresh',
+              color: Colors.white,
+            ),
           ),
         ],
       ),
@@ -377,10 +403,37 @@ class _PharmacyScreenState extends State<PharmacyScreen> {
   }
 
   Widget _buildPharmacyCard(Pharmacy pharmacy) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withOpacity(0.9),
+            Colors.white.withOpacity(0.7),
+          ],
+        ),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.3),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+          BoxShadow(
+            color: Colors.white.withOpacity(0.8),
+            blurRadius: 20,
+            offset: const Offset(-5, -5),
+          ),
+        ],
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -388,79 +441,237 @@ class _PharmacyScreenState extends State<PharmacyScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
-                  child: Text(
-                    pharmacy.name,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    overflow: TextOverflow.ellipsis,
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.local_pharmacy_rounded,
+                          color: Theme.of(context).colorScheme.primary,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          pharmacy.name,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
+                    horizontal: 12,
+                    vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: pharmacy.openNow ? Colors.green : Colors.red,
-                    borderRadius: BorderRadius.circular(4),
+                    gradient: LinearGradient(
+                      colors: pharmacy.openNow
+                          ? [Colors.green.shade400, Colors.green.shade600]
+                          : [Colors.red.shade400, Colors.red.shade600],
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: (pharmacy.openNow ? Colors.green : Colors.red).withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: Text(
                     pharmacy.openNow ? 'Open' : 'Closed',
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                const Icon(Icons.location_on, size: 16),
-                const SizedBox(width: 8),
-                Text(
-                  'Distance: ${pharmacy.distance}',
-                  style: const TextStyle(fontSize: 16),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.grey.shade200,
+                  width: 1,
                 ),
-              ],
-            ),
-            if (pharmacy.address != null) ...[
-              const SizedBox(height: 5),
-              Row(
+              ),
+              child: Column(
                 children: [
-                  const Icon(Icons.home, size: 16),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      pharmacy.address!,
-                      style: const TextStyle(fontSize: 16),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.location_on_rounded,
+                        size: 18,
+                        color: Colors.blue.shade600,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Distance: ${pharmacy.distance}',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (pharmacy.address != null) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.home_rounded,
+                          size: 18,
+                          color: Colors.green.shade600,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            pharmacy.address!,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
+                  ],
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.phone_rounded,
+                        size: 18,
+                        color: Colors.orange.shade600,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        pharmacy.contact,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
-            const SizedBox(height: 5),
-            Row(
-              children: [
-                const Icon(Icons.phone, size: 16),
-                const SizedBox(width: 8),
-                Text(pharmacy.contact, style: const TextStyle(fontSize: 16)),
-              ],
             ),
-            const SizedBox(height: 15),
+            const SizedBox(height: 16),
             Row(
-              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                TextButton.icon(
-                  onPressed: () => _callPharmacy(pharmacy.contact),
-                  icon: const Icon(Icons.call, size: 16),
-                  label: const Text('Call'),
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.green.shade400, Colors.green.shade600],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.green.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => _callPharmacy(pharmacy.contact),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.call_rounded,
+                                size: 18,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Call',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-                const SizedBox(width: 8),
-                TextButton.icon(
-                  onPressed: () => _openMaps(pharmacy),
-                  icon: const Icon(Icons.directions, size: 16),
-                  label: const Text('Directions'),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.blue.shade400, Colors.blue.shade600],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.blue.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => _openMaps(pharmacy),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.directions_rounded,
+                                size: 18,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Directions',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),

@@ -213,10 +213,7 @@ class _PrescriptionAnalysisScreenState extends State<PrescriptionAnalysisScreen>
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => MedicationAnalysisScreen(
-                          medications: medications,
-                          possibleIllness: possibleIllness,
-                        ),
+                        builder: (context) => const MedicationAnalysisScreen(),
                       ),
                     );
                   },
@@ -327,10 +324,7 @@ class _PrescriptionAnalysisScreenState extends State<PrescriptionAnalysisScreen>
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => MedicationAnalysisScreen(
-                medications: [medication],
-                possibleIllness: '',
-              ),
+              builder: (context) => const MedicationAnalysisScreen(),
             ),
           );
         },

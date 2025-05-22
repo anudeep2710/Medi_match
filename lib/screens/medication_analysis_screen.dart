@@ -1,15 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:provider/provider.dart';
+import 'package:medimatch/providers/prescription_provider.dart';
 import 'package:medimatch/services/medical_assistant_api_service.dart';
 
 class MedicationAnalysisScreen extends StatefulWidget {
-  final List<MedicationAnalysis> medications;
-  final String possibleIllness;
-
   const MedicationAnalysisScreen({
     super.key,
-    required this.medications,
-    required this.possibleIllness,
   });
 
   @override
@@ -17,338 +13,448 @@ class MedicationAnalysisScreen extends StatefulWidget {
 }
 
 class _MedicationAnalysisScreenState extends State<MedicationAnalysisScreen> {
-  // Key for the scaffold to show snackbars
-  final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+  final MedicalAssistantApiService _apiService = MedicalAssistantApiService();
+  String? _healthTips;
+  bool _isLoading = false;
+  String? _error;
 
-  // Show a snackbar without using context
-  void _showSnackBar(String message) {
-    _scaffoldMessengerKey.currentState?.showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
-    );
+  @override
+  void initState() {
+    super.initState();
+    _generateHealthTips();
+  }
+
+  Future<void> _generateHealthTips() async {
+    final prescriptionProvider = Provider.of<PrescriptionProvider>(context, listen: false);
+    final prescriptions = prescriptionProvider.prescriptions;
+
+    if (prescriptions.isEmpty) {
+      setState(() {
+        _error = 'No prescriptions found. Please scan a prescription first.';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      // Get the latest prescription
+      final latestPrescription = prescriptions.first;
+      final medicines = latestPrescription.medicines;
+
+      // Create a prompt for health tips based on medications
+      final medicineNames = medicines.map((m) => m.name).join(', ');
+      final prompt = '''
+Based on the following medications: $medicineNames
+
+Please provide personalized health tips and guidance including:
+1. General health advice for someone taking these medications
+2. Important dietary considerations and restrictions
+3. Lifestyle recommendations
+4. Potential side effects to watch for
+5. When to consult a doctor
+6. Tips for medication adherence
+
+Please format the response in a clear, easy-to-read manner with bullet points and sections.
+Keep the advice general and remind the user to always consult their healthcare provider for personalized medical advice.
+''';
+
+      final response = await _apiService.getHealthTips(medicineNames);
+
+      setState(() {
+        _healthTips = response;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = 'Failed to generate health tips: $e';
+        _isLoading = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return ScaffoldMessenger(
-      key: _scaffoldMessengerKey,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Medication Analysis'),
-        ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Medications
-            ...widget.medications.map((medication) => _buildMedicationCard(context, medication)),
-
-            // Possible illness section
-            if (widget.possibleIllness.isNotEmpty) ...[
-              const SizedBox(height: 24),
-              _buildPossibleIllnessCard(context),
-            ],
-          ],
-        ),
-      ),
-      ),
-    );
-  }
-
-  Widget _buildMedicationCard(BuildContext context, MedicationAnalysis medication) {
-    final theme = Theme.of(context);
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Medication name
-            Text(
-              medication.name,
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.primary,
-              ),
-            ),
-            const Divider(),
-
-            // Purpose
-            if (medication.purpose.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.check_circle, color: Colors.green, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Purpose',
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(medication.purpose),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
-
-            // Pros
-            if (medication.pros.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.add_circle, color: Colors.blue, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Pros',
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(medication.pros),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
-
-            // Cons
-            if (medication.cons.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.warning, color: Colors.orange, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Cons',
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(medication.cons),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
-
-            // Buy original medicine
-            const SizedBox(height: 16),
-            OutlinedButton.icon(
-              icon: const Icon(Icons.shopping_cart),
-              label: const Text('Buy Original Medicine'),
-              onPressed: () async {
-                final url = medication.buyLink.isNotEmpty
-                    ? medication.buyLink
-                    : 'https://www.1mg.com/search/all?name=${Uri.encodeComponent(medication.name)}';
-
-                final success = await _launchUrl(url);
-
-                if (!success && mounted) {
-                  _showSnackBar('Could not open link. Please try again later.');
-                }
-              },
-            ),
-
-            // Alternatives
-            const SizedBox(height: 16),
-            Text(
-              'Alternatives',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            if (medication.alternatives.isNotEmpty)
-              ...medication.alternatives.map((alt) => _buildAlternativeItem(context, alt))
-            else
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8.0),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.info_outline,
-                      color: Colors.blue,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Generic alternative',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const Text(
-                            'Ask your pharmacist for generic alternatives to save money',
-                            style: TextStyle(fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () async {
-                        final success = await _launchUrl('https://www.1mg.com/search/all?name=${Uri.encodeComponent("generic ${medication.name}")}');
-
-                        if (!success && mounted) {
-                          _showSnackBar('Could not open link. Please try again later.');
-                        }
-                      },
-                      child: const Text('Search'),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAlternativeItem(BuildContext context, MedicationAlternative alternative) {
-    final theme = Theme.of(context);
-    final isLowCost = alternative.type == 'low-cost';
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
-      child: Row(
-        children: [
-          Icon(
-            isLowCost ? Icons.trending_down : Icons.trending_up,
-            color: isLowCost ? Colors.green : Colors.purple,
-            size: 20,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${isLowCost ? "Low-cost" : "High-cost"}: ${alternative.name}',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                Text(
-                  '₹${alternative.price}',
-                  style: TextStyle(
-                    color: isLowCost ? Colors.green.shade700 : theme.colorScheme.primary,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+    return Scaffold(
+      backgroundColor: Colors.grey.shade50,
+      appBar: AppBar(
+        title: const Text('AI Health Analysis'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Theme.of(context).colorScheme.primary.withOpacity(0.8),
+                Theme.of(context).colorScheme.secondary.withOpacity(0.8),
               ],
             ),
           ),
-          TextButton(
-            onPressed: () async {
-              final url = alternative.buyLink.isNotEmpty
-                  ? alternative.buyLink
-                  : 'https://www.1mg.com/search/all?name=${Uri.encodeComponent(alternative.name)}';
-
-              final success = await _launchUrl(url);
-
-              if (!success && mounted) {
-                _showSnackBar('Could not open link. Please try again later.');
-              }
-            },
-            child: const Text('Buy'),
+        ),
+        actions: [
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: Colors.white.withOpacity(0.2),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.refresh_rounded),
+              onPressed: _isLoading ? null : _generateHealthTips,
+              tooltip: 'Regenerate Tips',
+              color: Colors.white,
+            ),
           ),
         ],
+      ),
+      body: _buildBody(),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_isLoading) {
+      return _buildLoadingState();
+    }
+
+    if (_error != null) {
+      return _buildErrorState();
+    }
+
+    if (_healthTips != null) {
+      return _buildHealthTipsContent();
+    }
+
+    return _buildEmptyState();
+  }
+
+  Widget _buildLoadingState() {
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white.withOpacity(0.9),
+              Colors.white.withOpacity(0.7),
+            ],
+          ),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.3),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(50),
+              ),
+              child: Icon(
+                Icons.psychology_rounded,
+                size: 48,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            const Text(
+              'AI is analyzing your medications...',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Generating personalized health tips',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade600,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildPossibleIllnessCard(BuildContext context) {
-    final theme = Theme.of(context);
-    final displayText = widget.possibleIllness.isNotEmpty
-        ? widget.possibleIllness
-        : 'Based on the medications in your prescription, a possible condition is being treated. Please consult your doctor for accurate diagnosis.';
-
-    return Card(
-      color: theme.colorScheme.primaryContainer,
+  Widget _buildErrorState() {
+    return Center(
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(24),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white.withOpacity(0.9),
+                Colors.white.withOpacity(0.7),
+              ],
+            ),
+            border: Border.all(
+              color: Colors.red.withOpacity(0.3),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.error_outline_rounded,
+                size: 64,
+                color: Colors.red.shade400,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Unable to Generate Tips',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _error!,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: _generateHealthTips,
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Try Again'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.purple,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white.withOpacity(0.9),
+                Colors.white.withOpacity(0.7),
+              ],
+            ),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.3),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.medical_information_rounded,
+                size: 64,
+                color: Colors.grey.shade400,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'No Analysis Available',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Scan a prescription to get personalized health tips',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.document_scanner_rounded),
+                label: const Text('Scan Prescription'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.purple,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHealthTipsContent() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white.withOpacity(0.9),
+              Colors.white.withOpacity(0.7),
+            ],
+          ),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.3),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(
-                  Icons.psychology,
-                  color: theme.colorScheme.onPrimaryContainer,
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.psychology_rounded,
+                    color: Theme.of(context).colorScheme.primary,
+                    size: 28,
+                  ),
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  'Possible Illness',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.onPrimaryContainer,
+                const SizedBox(width: 16),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'AI Health Analysis',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        'Personalized tips based on your medications',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              displayText,
-              style: TextStyle(
-                color: theme.colorScheme.onPrimaryContainer,
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.amber.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.amber.withOpacity(0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    color: Colors.amber.shade700,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'This is AI-generated advice. Always consult your healthcare provider for personalized medical guidance.',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'Note: This is not a diagnosis. Please consult a healthcare professional.',
-              style: TextStyle(
-                fontStyle: FontStyle.italic,
-                fontSize: 12,
+            const SizedBox(height: 24),
+            Text(
+              _healthTips!,
+              style: const TextStyle(
+                fontSize: 16,
+                height: 1.6,
               ),
             ),
           ],
         ),
       ),
     );
-  }
-
-  Future<bool> _launchUrl(String urlString) async {
-    try {
-      final Uri url = Uri.parse(urlString);
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-        return true;
-      } else {
-        // Fallback to a generic search if the specific URL can't be launched
-        final fallbackUrl = Uri.parse('https://www.google.com/search?q=${Uri.encodeComponent(urlString)}');
-        return await launchUrl(fallbackUrl, mode: LaunchMode.externalApplication);
-      }
-    } catch (e) {
-      debugPrint('Error launching URL: $e');
-      return false;
-    }
   }
 }

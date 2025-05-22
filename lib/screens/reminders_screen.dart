@@ -47,19 +47,46 @@ class _RemindersScreenState extends State<RemindersScreen> {
     final reminders = reminderProvider.reminders;
 
     return Scaffold(
+      backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         title: const Text('Medicine Reminders'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Theme.of(context).colorScheme.primary.withOpacity(0.8),
+                Theme.of(context).colorScheme.secondary.withOpacity(0.8),
+              ],
+            ),
+          ),
+        ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const AddReminderScreen(),
-                ),
-              );
-            },
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: Colors.white.withOpacity(0.2),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.add_rounded),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AddReminderScreen(),
+                  ),
+                );
+              },
+              color: Colors.white,
+            ),
           ),
         ],
       ),

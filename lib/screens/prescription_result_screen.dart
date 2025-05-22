@@ -8,6 +8,7 @@ import 'package:medimatch/providers/reminder_provider.dart';
 import 'package:medimatch/providers/translation_provider.dart';
 import 'package:medimatch/providers/settings_provider.dart';
 import 'package:medimatch/screens/medicine_details_screen.dart';
+import 'package:medimatch/services/medical_assistant_api_service.dart';
 
 class PrescriptionResultScreen extends StatefulWidget {
   final Prescription prescription;
@@ -99,7 +100,7 @@ class _PrescriptionResultScreenState extends State<PrescriptionResultScreen> {
     try {
       final translationProvider = Provider.of<TranslationProvider>(context, listen: false);
       final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
-      
+
       final summary = _generateSummary();
       final translated = await translationProvider.translateText(
         summary,
@@ -121,30 +122,30 @@ class _PrescriptionResultScreenState extends State<PrescriptionResultScreen> {
   String _generateSummary() {
     final medicines = widget.prescription.medicines;
     final buffer = StringBuffer();
-    
+
     buffer.writeln('Prescription for ${widget.prescription.patientName}');
     buffer.writeln('Date: ${DateFormat('MMM d, yyyy').format(widget.prescription.date)}');
     buffer.writeln('');
     buffer.writeln('Medicines:');
-    
+
     for (int i = 0; i < medicines.length; i++) {
       final medicine = medicines[i];
       buffer.writeln('${i + 1}. ${medicine.name} ${medicine.dosage} - ${medicine.instructions}');
     }
-    
+
     if (_interactionsResult != null) {
       buffer.writeln('');
       buffer.writeln('Interactions:');
       buffer.writeln(_interactionsResult);
     }
-    
+
     return buffer.toString();
   }
 
   @override
   Widget build(BuildContext context) {
     final settingsProvider = Provider.of<SettingsProvider>(context);
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Prescription Results'),
@@ -158,6 +159,11 @@ class _PrescriptionResultScreenState extends State<PrescriptionResultScreen> {
             icon: const Icon(Icons.notifications_active),
             onPressed: _isGeneratingReminders ? null : _generateReminders,
             tooltip: 'Generate Reminders',
+          ),
+          IconButton(
+            icon: const Icon(Icons.health_and_safety_rounded),
+            onPressed: () => _showHealthTipsDialog(),
+            tooltip: 'AI Health Tips',
           ),
         ],
       ),
@@ -321,5 +327,198 @@ class _PrescriptionResultScreenState extends State<PrescriptionResultScreen> {
         },
       ),
     );
+  }
+
+  void _showHealthTipsDialog() async {
+    final apiService = MedicalAssistantApiService();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.psychology_rounded,
+                color: Colors.green.shade600,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'AI Health Tips',
+                style: TextStyle(fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.blue.withOpacity(0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.auto_awesome_rounded,
+                      color: Colors.blue.shade600,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Generating personalized health tips based on your medications...',
+                        style: TextStyle(fontSize: 14),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              const CircularProgressIndicator(),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    try {
+      // Create a prompt for health tips based on medications
+      final medicineNames = widget.prescription.medicines.map((m) => m.name).join(', ');
+      final prompt = '''
+Based on the following medications: $medicineNames
+
+Please provide personalized health tips and guidance including:
+1. General health advice for someone taking these medications
+2. Important dietary considerations and restrictions
+3. Lifestyle recommendations
+4. Potential side effects to watch for
+5. When to consult a doctor
+6. Tips for medication adherence
+
+Please format the response in a clear, easy-to-read manner with bullet points and sections.
+Keep the advice general and remind the user to always consult their healthcare provider for personalized medical advice.
+''';
+
+      final healthTips = await apiService.getHealthTips(medicineNames);
+
+      if (mounted) {
+        Navigator.pop(context); // Close loading dialog
+
+        // Show health tips dialog
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.psychology_rounded,
+                    color: Colors.green.shade600,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'AI Health Tips',
+                    style: TextStyle(fontSize: 18),
+                  ),
+                ),
+              ],
+            ),
+            content: SizedBox(
+              width: double.maxFinite,
+              height: 400,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: Colors.amber.withOpacity(0.3),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.warning_amber_rounded,
+                            color: Colors.amber.shade700,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Text(
+                              'This is AI-generated advice. Always consult your healthcare provider.',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      healthTips,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Close loading dialog
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to generate health tips: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }

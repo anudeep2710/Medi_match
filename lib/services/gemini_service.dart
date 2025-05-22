@@ -159,6 +159,16 @@ class GeminiService {
     return await _callGeminiApi(prompt);
   }
 
+  // Generate personalized health tips based on medications
+  Future<String> generateHealthTips(String prompt) async {
+    try {
+      return await _callGeminiApi(prompt);
+    } catch (e) {
+      debugPrint('Error generating health tips: $e');
+      throw Exception('Failed to generate health tips: $e');
+    }
+  }
+
   // Find nearby pharmacies
   Future<List<Pharmacy>> findNearbyPharmacies(
     double latitude,

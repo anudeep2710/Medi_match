@@ -50,6 +50,69 @@ class MedicalAssistantApiService {
       throw Exception('Failed to analyze prescription: $e');
     }
   }
+
+  /// Get health tips for given medications
+  Future<String> getHealthTips(String medications) async {
+    try {
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'prompt': '''
+Based on the following medications: $medications
+
+Please provide personalized health tips and guidance including:
+1. General health advice for someone taking these medications
+2. Important dietary considerations and restrictions
+3. Lifestyle recommendations
+4. Potential side effects to watch for
+5. When to consult a doctor
+6. Tips for medication adherence
+
+Please format the response in a clear, easy-to-read manner with bullet points and sections.
+Keep the advice general and remind the user to always consult their healthcare provider for personalized medical advice.
+''',
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['response'] ?? 'No health tips available for these medications.';
+      } else {
+        throw Exception('Failed to get health tips: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('Error getting health tips: $e');
+      // Return a fallback message
+      return '''
+**Health Tips for Your Medications**
+
+Based on your current medications, here are some general health recommendations:
+
+**General Guidelines:**
+• Take medications exactly as prescribed by your healthcare provider
+• Maintain consistent timing for medication doses
+• Keep a medication diary to track effects and side effects
+• Stay hydrated and maintain a balanced diet
+
+**Important Reminders:**
+• Never stop or change medications without consulting your doctor
+• Inform all healthcare providers about your current medications
+• Store medications properly according to instructions
+• Check expiration dates regularly
+
+**When to Contact Your Doctor:**
+• If you experience unusual side effects
+• If symptoms worsen or don't improve
+• Before starting any new medications or supplements
+• If you have questions about your treatment plan
+
+**Note:** This is general advice. Always consult your healthcare provider for personalized medical guidance specific to your condition and medications.
+''';
+    }
+  }
 }
 
 class MedicalAssistantResponse {
