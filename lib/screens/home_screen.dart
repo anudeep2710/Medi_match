@@ -14,6 +14,7 @@ import 'package:medimatch/screens/chat/chat_list_screen.dart';
 import 'package:medimatch/screens/medication_analysis_screen.dart';
 import 'package:medimatch/screens/login_screen.dart';
 import 'package:medimatch/screens/profile_screen.dart';
+import 'package:medimatch/screens/firebase_test_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
