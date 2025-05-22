@@ -51,5 +51,17 @@
 	<string>MediMatch needs access to your location to find nearby pharmacies.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>MediMatch needs access to your location to find nearby pharmacies.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<!-- Replace with your REVERSED_CLIENT_ID from GoogleService-Info.plist -->
+				<string>com.googleusercontent.apps.123456789012-abcdefghijklmnopqrstuvwxyz</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
 // Services
 import 'package:medimatch/services/hive_service.dart';
@@ -10,6 +12,7 @@ import 'package:medimatch/services/location_service.dart';
 import 'package:medimatch/services/map_service.dart';
 import 'package:medimatch/services/medical_assistant_api_service.dart';
 import 'package:medimatch/services/chat_service.dart';
+import 'package:medimatch/services/firebase_service.dart';
 
 // Providers
 import 'package:medimatch/providers/settings_provider.dart';
@@ -18,15 +21,28 @@ import 'package:medimatch/providers/reminder_provider.dart';
 import 'package:medimatch/providers/pharmacy_provider.dart';
 import 'package:medimatch/providers/translation_provider.dart';
 import 'package:medimatch/providers/medical_assistant_provider.dart';
+import 'package:medimatch/providers/auth_provider.dart';
 
 // Screens
 import 'package:medimatch/screens/home_screen.dart';
+import 'package:medimatch/screens/login_screen.dart';
 
 // Utils
 import 'package:medimatch/utils/notification_helper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Firebase
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    debugPrint('Firebase initialized successfully');
+  } catch (e) {
+    debugPrint('Error initializing Firebase: $e');
+    // Continue without Firebase
+  }
 
   // Initialize Hive
   await HiveService.init();
@@ -63,6 +79,7 @@ class MyApp extends StatelessWidget {
     final locationService = LocationService();
     final mapService = MapService();
     final medicalAssistantApiService = MedicalAssistantApiService();
+    final firebaseService = FirebaseService();
 
     return MultiProvider(
       providers: [
@@ -85,9 +102,10 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => MedicalAssistantProvider(medicalAssistantApiService),
         ),
+        ChangeNotifierProvider(create: (_) => AuthProvider(firebaseService)),
       ],
-      child: Consumer<SettingsProvider>(
-        builder: (context, settingsProvider, _) {
+      child: Consumer2<SettingsProvider, AuthProvider>(
+        builder: (context, settingsProvider, authProvider, _) {
           return MaterialApp(
             title: 'MediMatch',
             debugShowCheckedModeBanner: false,
@@ -103,7 +121,7 @@ class MyApp extends StatelessWidget {
                 tertiary: Colors.amber,
               ),
               useMaterial3: true,
-              cardTheme: const CardTheme(
+              cardTheme: const CardThemeData(
                 elevation: 4,
                 margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                 shape: RoundedRectangleBorder(
@@ -150,7 +168,10 @@ class MyApp extends StatelessWidget {
               Locale('hi'), // Hindi
               Locale('ta'), // Tamil
             ],
-            home: const HomeScreen(),
+            home:
+                authProvider.isAuthenticated
+                    ? const HomeScreen()
+                    : const LoginScreen(),
           );
         },
       ),

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:medimatch/models/prescription.dart';
 import 'package:medimatch/providers/prescription_provider.dart';
+import 'package:medimatch/providers/auth_provider.dart';
 import 'package:medimatch/screens/scan_prescription_screen.dart';
 import 'package:medimatch/screens/scan_handwritten_prescription_screen.dart';
 import 'package:medimatch/screens/reminders_screen.dart';
@@ -10,6 +11,8 @@ import 'package:medimatch/screens/pharmacy_screen.dart';
 import 'package:medimatch/screens/settings_screen.dart';
 import 'package:medimatch/screens/donation/medication_donation_list_screen.dart';
 import 'package:medimatch/screens/chat/chat_list_screen.dart';
+import 'package:medimatch/screens/login_screen.dart';
+import 'package:medimatch/screens/profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -37,12 +40,36 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('MediMatch'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.person),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ProfileScreen()),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const SettingsScreen()),
               );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              final authProvider = Provider.of<AuthProvider>(
+                context,
+                listen: false,
+              );
+              await authProvider.signOut();
+              if (context.mounted) {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                );
+              }
             },
           ),
         ],
@@ -74,10 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.volunteer_activism),
             label: 'Donate',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.chat),
-            label: 'Chat',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'Chat'),
         ],
       ),
     );
