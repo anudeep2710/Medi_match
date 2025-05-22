@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:medimatch/models/prescription.dart';
 import 'package:medimatch/providers/prescription_provider.dart';
+import 'package:medimatch/providers/auth_provider.dart';
 import 'package:medimatch/screens/scan_prescription_screen.dart';
 
 import 'package:medimatch/screens/reminders_screen.dart';
@@ -11,6 +12,8 @@ import 'package:medimatch/screens/settings_screen.dart';
 import 'package:medimatch/screens/donation/medication_donation_list_screen.dart';
 import 'package:medimatch/screens/chat/chat_list_screen.dart';
 import 'package:medimatch/screens/medication_analysis_screen.dart';
+import 'package:medimatch/screens/login_screen.dart';
+import 'package:medimatch/screens/profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -38,12 +41,36 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('MediMatch'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.person),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ProfileScreen()),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const SettingsScreen()),
               );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              final authProvider = Provider.of<AuthProvider>(
+                context,
+                listen: false,
+              );
+              await authProvider.signOut();
+              if (context.mounted) {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                );
+              }
             },
           ),
         ],
@@ -105,6 +132,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: Icon(Icons.local_pharmacy_rounded),
                 label: 'Pharmacy',
               ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.volunteer_activism),
+                label: 'Donate',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.chat),
+                label: 'Chat',
+              ),
             ],
           ),
         ),
@@ -124,6 +159,10 @@ class _HomeScreenState extends State<HomeScreen> {
         return _buildRemindersTab();
       case 4:
         return _buildPharmacyTab();
+      case 5:
+        return _buildDonateTab();
+      case 6:
+        return _buildChatTab();
       default:
         return _buildHomeTab();
     }
@@ -764,6 +803,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildPharmacyTab() {
     return const PharmacyScreen();
+  }
+
+  Widget _buildDonateTab() {
+    return const MedicationDonationListScreen();
+  }
+
+  Widget _buildChatTab() {
+    return const ChatListScreen();
   }
 
 
