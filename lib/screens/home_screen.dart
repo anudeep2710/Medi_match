@@ -8,6 +8,8 @@ import 'package:medimatch/screens/scan_handwritten_prescription_screen.dart';
 import 'package:medimatch/screens/reminders_screen.dart';
 import 'package:medimatch/screens/pharmacy_screen.dart';
 import 'package:medimatch/screens/settings_screen.dart';
+import 'package:medimatch/screens/donation/medication_donation_list_screen.dart';
+import 'package:medimatch/screens/chat/chat_list_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -68,6 +70,14 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.local_pharmacy),
             label: 'Pharmacy',
           ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.volunteer_activism),
+            label: 'Donate',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.chat),
+            label: 'Chat',
+          ),
         ],
       ),
     );
@@ -85,6 +95,10 @@ class _HomeScreenState extends State<HomeScreen> {
         return _buildRemindersTab();
       case 4:
         return _buildPharmacyTab();
+      case 5:
+        return _buildDonationTab();
+      case 6:
+        return _buildChatTab();
       default:
         return _buildHomeTab();
     }
@@ -201,6 +215,18 @@ class _HomeScreenState extends State<HomeScreen> {
                     'title': 'Nearby Pharmacies',
                     'color': Colors.green,
                     'onTap': () => setState(() => _selectedIndex = 4),
+                  },
+                  {
+                    'icon': Icons.volunteer_activism,
+                    'title': 'Donate Medicines',
+                    'color': Colors.pink,
+                    'onTap': () => setState(() => _selectedIndex = 5),
+                  },
+                  {
+                    'icon': Icons.chat,
+                    'title': 'Chat',
+                    'color': Colors.teal,
+                    'onTap': () => setState(() => _selectedIndex = 6),
                   },
                   {
                     'icon': Icons.draw,
@@ -544,6 +570,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildPharmacyTab() {
     return const PharmacyScreen();
+  }
+
+  Widget _buildDonationTab() {
+    return const MedicationDonationListScreen();
+  }
+
+  Widget _buildChatTab() {
+    return const ChatListScreen();
   }
 
   void _onItemTapped(int index) {

@@ -8,6 +8,8 @@ import 'package:medimatch/services/gemini_service.dart';
 import 'package:medimatch/services/ocr_service.dart';
 import 'package:medimatch/services/location_service.dart';
 import 'package:medimatch/services/map_service.dart';
+import 'package:medimatch/services/medical_assistant_api_service.dart';
+import 'package:medimatch/services/chat_service.dart';
 
 // Providers
 import 'package:medimatch/providers/settings_provider.dart';
@@ -15,6 +17,7 @@ import 'package:medimatch/providers/prescription_provider.dart';
 import 'package:medimatch/providers/reminder_provider.dart';
 import 'package:medimatch/providers/pharmacy_provider.dart';
 import 'package:medimatch/providers/translation_provider.dart';
+import 'package:medimatch/providers/medical_assistant_provider.dart';
 
 // Screens
 import 'package:medimatch/screens/home_screen.dart';
@@ -37,6 +40,14 @@ void main() async {
     // Continue without notifications
   }
 
+  // Initialize Chat Service
+  try {
+    await ChatService().init();
+  } catch (e) {
+    debugPrint('Error initializing Chat Service: $e');
+    // Continue without Chat Service
+  }
+
   runApp(const MyApp());
 }
 
@@ -51,6 +62,7 @@ class MyApp extends StatelessWidget {
     final ocrService = OCRService();
     final locationService = LocationService();
     final mapService = MapService();
+    final medicalAssistantApiService = MedicalAssistantApiService();
 
     return MultiProvider(
       providers: [
@@ -69,6 +81,9 @@ class MyApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (_) => TranslationProvider(geminiService),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => MedicalAssistantProvider(medicalAssistantApiService),
         ),
       ],
       child: Consumer<SettingsProvider>(

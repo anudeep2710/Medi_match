@@ -1,9 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:provider/provider.dart';
-import 'package:medimatch/providers/prescription_provider.dart';
-import 'package:medimatch/screens/prescription_result_screen.dart';
+import 'package:medimatch/screens/prescription_analysis_screen.dart';
 
 class ScanPrescriptionScreen extends StatefulWidget {
   const ScanPrescriptionScreen({super.key});
@@ -42,38 +40,17 @@ class _ScanPrescriptionScreenState extends State<ScanPrescriptionScreen> {
       });
 
       try {
-        final prescriptionProvider = Provider.of<PrescriptionProvider>(
-          context,
-          listen: false,
-        );
-        final prescription = await prescriptionProvider.scanPrescription(
-          _imageFile!,
-          _patientNameController.text,
-        );
-
-        if (prescription != null) {
-          if (mounted) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder:
-                    (context) =>
-                        PrescriptionResultScreen(prescription: prescription),
+        // Navigate to the analysis screen first
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PrescriptionAnalysisScreen(
+                imageFile: _imageFile!,
+                patientName: _patientNameController.text,
               ),
-            );
-          }
-        } else {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  prescriptionProvider.error ??
-                      'Failed to process prescription',
-                ),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
+            ),
+          );
         }
       } catch (e) {
         if (mounted) {
