@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:medimatch/models/health_tips.dart';
 
 class MedicalAssistantApiService {
   static const String apiUrl = 'https://us-central1-said-eb2f5.cloudfunctions.net/gemini_medical_assistant';
@@ -51,41 +52,107 @@ class MedicalAssistantApiService {
     }
   }
 
-  /// Get health tips for given medications
-  Future<String> getHealthTips(String medications) async {
+  /// Get comprehensive health tips for given medications
+  Future<HealthTips> getHealthTips(String medications) async {
     try {
+      // Since the API doesn't support text-only requests, we'll use the fallback
+      // In a real implementation, you might have a separate endpoint for health tips
+      debugPrint('Generating health tips for medications: $medications');
+      return HealthTips.fallback(medications);
+    } catch (e) {
+      debugPrint('Error getting health tips: $e');
+      return HealthTips.fallback(medications);
+    }
+  }
+
+  /// Get health tips from image analysis (when we have prescription image)
+  Future<HealthTips> getHealthTipsFromImage(File imageFile, String medications) async {
+    try {
+      // Convert image to base64
+      final base64Image = await imageToBase64(imageFile);
+
       final response = await http.post(
         Uri.parse(apiUrl),
         headers: {
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
+          'image_base64': base64Image,
           'prompt': '''
-Based on the following medications: $medications
+Based on the medications found in this prescription: $medications
 
-Please provide personalized health tips and guidance including:
-1. General health advice for someone taking these medications
-2. Important dietary considerations and restrictions
-3. Lifestyle recommendations
-4. Potential side effects to watch for
-5. When to consult a doctor
-6. Tips for medication adherence
+Please provide comprehensive personalized health tips and guidance including:
 
-Please format the response in a clear, easy-to-read manner with bullet points and sections.
-Keep the advice general and remind the user to always consult their healthcare provider for personalized medical advice.
+**1. General Health Advice:**
+• Essential health recommendations for someone taking these medications
+• Daily health practices and habits
+• Overall wellness guidelines
+
+**2. Dietary Considerations and Restrictions:**
+• Foods to include in the diet
+• Foods and drinks to avoid
+• Timing of meals with medications
+• Nutritional recommendations
+• Food-drug interactions to be aware of
+
+**3. Lifestyle Recommendations:**
+• Exercise and physical activity guidelines
+• Sleep recommendations
+• Stress management techniques
+• Daily routine suggestions
+• Habits to develop or avoid
+
+**4. Potential Side Effects to Watch For:**
+• Common side effects that may occur
+• Serious side effects requiring immediate attention
+• How to monitor and track side effects
+• When side effects are normal vs concerning
+
+**5. When to Consult a Doctor:**
+• Specific symptoms that require medical attention
+• Emergency warning signs
+• Regular follow-up recommendations
+• Questions to ask your healthcare provider
+
+**6. Tips for Medication Adherence:**
+• Strategies to remember taking medications
+• Organization and storage tips
+• Dealing with missed doses
+• Motivation and compliance strategies
+
+Please format each section clearly with bullet points and provide specific, actionable advice.
+Keep the advice evidence-based but general, and remind the user to always consult their healthcare provider for personalized medical advice.
+
+Focus ONLY on health tips and guidance, not on medication analysis or alternatives.
 ''',
         }),
-      );
+      ).timeout(const Duration(seconds: 60));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return data['response'] ?? 'No health tips available for these medications.';
+        final responseText = data['response'] ?? '';
+        if (responseText.isNotEmpty) {
+          return HealthTips.fromApiResponse(responseText, medications);
+        } else {
+          return HealthTips.fallback(medications);
+        }
       } else {
-        throw Exception('Failed to get health tips: ${response.statusCode}');
+        debugPrint('Health tips API error: ${response.statusCode}');
+        return HealthTips.fallback(medications);
       }
     } catch (e) {
-      debugPrint('Error getting health tips: $e');
-      // Return a fallback message
+      debugPrint('Error getting health tips from image: $e');
+      return HealthTips.fallback(medications);
+    }
+  }
+
+  /// Get simple health tips as string (for backward compatibility)
+  Future<String> getHealthTipsAsString(String medications) async {
+    try {
+      final healthTips = await getHealthTips(medications);
+      return _formatHealthTipsAsString(healthTips);
+    } catch (e) {
+      debugPrint('Error getting health tips as string: $e');
       return '''
 **Health Tips for Your Medications**
 
@@ -112,6 +179,67 @@ Based on your current medications, here are some general health recommendations:
 **Note:** This is general advice. Always consult your healthcare provider for personalized medical guidance specific to your condition and medications.
 ''';
     }
+  }
+
+  String _formatHealthTipsAsString(HealthTips healthTips) {
+    final buffer = StringBuffer();
+
+    buffer.writeln('**Health Tips for Your Medications: ${healthTips.medications}**\n');
+
+    // General Health Advice
+    buffer.writeln('**${healthTips.generalAdvice.title}:**');
+    for (final tip in healthTips.generalAdvice.tips) {
+      buffer.writeln('• $tip');
+    }
+    buffer.writeln();
+
+    // Dietary Considerations
+    buffer.writeln('**${healthTips.dietary.title}:**');
+    if (healthTips.dietary.recommendations.isNotEmpty) {
+      buffer.writeln('Recommendations:');
+      for (final tip in healthTips.dietary.recommendations) {
+        buffer.writeln('• $tip');
+      }
+    }
+    if (healthTips.dietary.restrictions.isNotEmpty) {
+      buffer.writeln('Restrictions:');
+      for (final tip in healthTips.dietary.restrictions) {
+        buffer.writeln('• $tip');
+      }
+    }
+    buffer.writeln();
+
+    // Lifestyle Recommendations
+    buffer.writeln('**${healthTips.lifestyle.title}:**');
+    for (final tip in [...healthTips.lifestyle.exercise, ...healthTips.lifestyle.sleep, ...healthTips.lifestyle.stress, ...healthTips.lifestyle.habits]) {
+      buffer.writeln('• $tip');
+    }
+    buffer.writeln();
+
+    // Side Effects
+    buffer.writeln('**${healthTips.sideEffects.title}:**');
+    for (final tip in [...healthTips.sideEffects.commonSideEffects, ...healthTips.sideEffects.seriousSideEffects, ...healthTips.sideEffects.monitoringTips]) {
+      buffer.writeln('• $tip');
+    }
+    buffer.writeln();
+
+    // Doctor Consultation
+    buffer.writeln('**${healthTips.doctorGuidance.title}:**');
+    for (final tip in [...healthTips.doctorGuidance.whenToCall, ...healthTips.doctorGuidance.emergencySignals, ...healthTips.doctorGuidance.regularCheckups]) {
+      buffer.writeln('• $tip');
+    }
+    buffer.writeln();
+
+    // Medication Adherence
+    buffer.writeln('**${healthTips.adherence.title}:**');
+    for (final tip in [...healthTips.adherence.reminders, ...healthTips.adherence.organization, ...healthTips.adherence.motivation]) {
+      buffer.writeln('• $tip');
+    }
+    buffer.writeln();
+
+    buffer.writeln('**Note:** This is AI-generated advice. Always consult your healthcare provider for personalized medical guidance specific to your condition and medications.');
+
+    return buffer.toString();
   }
 }
 

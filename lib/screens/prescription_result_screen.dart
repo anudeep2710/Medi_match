@@ -402,24 +402,10 @@ class _PrescriptionResultScreenState extends State<PrescriptionResultScreen> {
     );
 
     try {
-      // Create a prompt for health tips based on medications
+      // Create medicine names for health tips
       final medicineNames = widget.prescription.medicines.map((m) => m.name).join(', ');
-      final prompt = '''
-Based on the following medications: $medicineNames
 
-Please provide personalized health tips and guidance including:
-1. General health advice for someone taking these medications
-2. Important dietary considerations and restrictions
-3. Lifestyle recommendations
-4. Potential side effects to watch for
-5. When to consult a doctor
-6. Tips for medication adherence
-
-Please format the response in a clear, easy-to-read manner with bullet points and sections.
-Keep the advice general and remind the user to always consult their healthcare provider for personalized medical advice.
-''';
-
-      final healthTips = await apiService.getHealthTips(medicineNames);
+      final healthTips = await apiService.getHealthTipsAsString(medicineNames);
 
       if (mounted) {
         Navigator.pop(context); // Close loading dialog
