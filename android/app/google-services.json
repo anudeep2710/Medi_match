@@ -1,33 +1,33 @@
 {
   "project_info": {
-    "project_number": "123456789012",
-    "project_id": "medimatch-app",
-    "storage_bucket": "medimatch-app.appspot.com"
+    "project_number": "811543386253",
+    "project_id": "medimatch-f446c",
+    "storage_bucket": "medimatch-f446c.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:123456789012:android:abcdef1234567890",
+        "mobilesdk_app_id": "1:811543386253:android:3dbae7c2a9913d44f7aac4",
         "android_client_info": {
           "package_name": "com.example.medimatch"
         }
       },
       "oauth_client": [
         {
-          "client_id": "123456789012-abcdefghijklmnopqrstuvwxyz.apps.googleusercontent.com",
+          "client_id": "811543386253-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyA1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6Q"
+          "current_key": "AIzaSyCLEMsUT7EqMOzaY0IMfhUevhvDEFF2K7Q"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "123456789012-abcdefghijklmnopqrstuvwxyz.apps.googleusercontent.com",
+              "client_id": "811543386253-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com",
               "client_type": 3
             }
           ]

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:medimatch/screens/chat/chat_screen.dart';
+import 'package:medimatch/screens/chat/new_chat_screen.dart';
+import 'package:medimatch/services/firebase_chat_service.dart';
 
 class ChatListScreen extends StatefulWidget {
   const ChatListScreen({Key? key}) : super(key: key);
@@ -9,227 +12,296 @@ class ChatListScreen extends StatefulWidget {
 }
 
 class _ChatListScreenState extends State<ChatListScreen> {
-  List<ConversationInfo> _conversations = [];
-  bool _isLoading = true;
+  final FirebaseChatService _chatService = FirebaseChatService();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   @override
   void initState() {
     super.initState();
-    _loadSampleConversations();
+    _initializeUser();
   }
 
-  void _loadSampleConversations() {
-    setState(() {
-      _isLoading = true;
-    });
-
-    // For demo purposes, we'll create some sample conversations
-    final sampleConversations = [
-      ConversationInfo(
-        id: 'conversation_1',
-        name: 'John Doe',
-        lastMessage: 'Hello, do you have any unused medications?',
-        unreadCount: 2,
-        isGroup: false,
-      ),
-      ConversationInfo(
-        id: 'conversation_2',
-        name: 'Medication Donors Group',
-        lastMessage: 'I have some unused antibiotics to donate.',
-        unreadCount: 5,
-        isGroup: true,
-      ),
-      ConversationInfo(
-        id: 'conversation_3',
-        name: 'Jane Smith',
-        lastMessage: 'Thank you for the medication!',
-        unreadCount: 0,
-        isGroup: false,
-      ),
-    ];
-
-    setState(() {
-      _conversations = sampleConversations;
-      _isLoading = false;
-    });
-  }
-
-  void _addConversation(ConversationInfo conversation) {
-    setState(() {
-      // Check if conversation already exists
-      final existingIndex = _conversations.indexWhere(
-        (conv) => conv.id == conversation.id,
+  Future<void> _initializeUser() async {
+    // Ensure user is authenticated and profile is updated
+    final user = _auth.currentUser;
+    if (user != null) {
+      await _chatService.updateUserProfile(
+        displayName: user.displayName ?? 'Anonymous User',
+        photoUrl: user.photoURL,
       );
+      await _chatService.setUserOnlineStatus(true);
+    }
+  }
 
-      if (existingIndex >= 0) {
-        // Update existing conversation
-        _conversations[existingIndex] = conversation;
-      } else {
-        // Add new conversation
-        _conversations.add(conversation);
-      }
-    });
+  @override
+  void dispose() {
+    // Set user offline when leaving chat
+    _chatService.setUserOnlineStatus(false);
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final user = _auth.currentUser;
+
+    if (user == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Chats')),
+        body: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.login, size: 64, color: Colors.grey),
+              SizedBox(height: 16),
+              Text('Please log in to access chat'),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Chats'),
+        title: const Text('💬 Live Chat'),
+        backgroundColor: Colors.teal,
+        foregroundColor: Colors.white,
         actions: [
           IconButton(
-            icon: const Icon(Icons.group_add),
-            onPressed: () {
-              // Navigate to create group chat screen
-              _navigateToNewChat(context, isGroup: true);
-            },
+            icon: const Icon(Icons.search),
+            onPressed: () => _navigateToNewChat(context),
+            tooltip: 'Start New Chat',
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _conversations.isEmpty
-              ? _buildEmptyState()
-              : _buildConversationsList(),
+      body: StreamBuilder<List<ChatConversation>>(
+        stream: _chatService.getConversationsStream(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error, size: 64, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text('Error: ${snapshot.error}'),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => setState(() {}),
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          final conversations = snapshot.data ?? [];
+
+          if (conversations.isEmpty) {
+            return _buildEmptyState();
+          }
+
+          return _buildConversationsList(conversations);
+        },
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _navigateToNewChat(context),
-        child: const Icon(Icons.chat),
+        backgroundColor: Colors.teal,
+        child: const Icon(Icons.add_comment, color: Colors.white),
       ),
     );
   }
 
   Widget _buildEmptyState() {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(
-            Icons.chat_bubble_outline,
-            size: 80,
-            color: Colors.grey,
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'No conversations yet',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+      child: Container(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.teal.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(
+                Icons.chat_bubble_outline,
+                size: 64,
+                color: Colors.teal,
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Start a new chat to connect with other users',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey),
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: () => _navigateToNewChat(context),
-            icon: const Icon(Icons.add),
-            label: const Text('Start a New Chat'),
-          ),
-        ],
+            const SizedBox(height: 24),
+            const Text(
+              'No conversations yet',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Connect with other users to share medicine information and start meaningful conversations.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.grey,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton.icon(
+              onPressed: () => _navigateToNewChat(context),
+              icon: const Icon(Icons.add_comment),
+              label: const Text('Start Your First Chat'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.teal,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildConversationsList() {
+  Widget _buildConversationsList(List<ChatConversation> conversations) {
     return ListView.builder(
-      itemCount: _conversations.length,
+      itemCount: conversations.length,
       itemBuilder: (context, index) {
-        final conversation = _conversations[index];
-        return ListTile(
-          leading: CircleAvatar(
-            child: conversation.isGroup
-                ? const Icon(Icons.group)
-                : Text(conversation.name[0].toUpperCase()),
-          ),
-          title: Text(conversation.name),
-          subtitle: Text(
-            conversation.lastMessage ?? 'No messages yet',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          trailing: conversation.unreadCount > 0
-              ? CircleAvatar(
-                  radius: 12,
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  child: Text(
-                    conversation.unreadCount.toString(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                    ),
-                  ),
-                )
-              : null,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ChatScreen(
-                  conversationID: conversation.id,
-                  targetUserID: conversation.id, // Use id as userId
-                  targetUserName: conversation.name,
-                  isGroupChat: conversation.isGroup,
+        final conversation = conversations[index];
+        final currentUserId = _auth.currentUser?.uid ?? '';
+        final otherUserName = conversation.getOtherParticipantName(currentUserId);
+
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: Colors.teal.withOpacity(0.2),
+              child: Text(
+                otherUserName.isNotEmpty ? otherUserName[0].toUpperCase() : '?',
+                style: const TextStyle(
+                  color: Colors.teal,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-            ).then((_) => _loadSampleConversations());
-          },
+            ),
+            title: Text(
+              otherUserName,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  conversation.lastMessage.isNotEmpty
+                      ? conversation.lastMessage
+                      : 'No messages yet',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: conversation.lastMessage.isNotEmpty
+                        ? Colors.grey.shade700
+                        : Colors.grey.shade500,
+                  ),
+                ),
+                if (conversation.lastMessageTime != null)
+                  Text(
+                    _formatTime(conversation.lastMessageTime!),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade500,
+                    ),
+                  ),
+              ],
+            ),
+            trailing: const Icon(
+              Icons.chevron_right,
+              color: Colors.grey,
+            ),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ChatScreen(
+                    conversationID: conversation.id,
+                    targetUserID: conversation.participants.firstWhere(
+                      (id) => id != currentUserId,
+                      orElse: () => '',
+                    ),
+                    targetUserName: otherUserName,
+                    isGroupChat: false,
+                  ),
+                ),
+              );
+            },
+          ),
         );
       },
     );
   }
 
-  void _navigateToNewChat(BuildContext context, {bool isGroup = false}) async {
-    // For simplicity, we'll just create a mock conversation
-    if (isGroup) {
-      final groupId = 'group_${DateTime.now().millisecondsSinceEpoch}';
-      final groupName = 'New Group Chat';
+  String _formatTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
 
-      final conversation = ConversationInfo(
-        id: groupId,
-        name: groupName,
-        isGroup: true,
-      );
-
-      _addConversation(conversation);
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ChatScreen(
-            conversationID: conversation.id,
-            targetUserID: 'group_member',
-            targetUserName: conversation.name,
-            isGroupChat: conversation.isGroup,
-          ),
-        ),
-      ).then((_) => _loadSampleConversations());
+    if (difference.inDays > 0) {
+      return '${difference.inDays}d ago';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours}h ago';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes}m ago';
     } else {
-      // Create a one-on-one chat with a mock user
-      final userId = 'user_${DateTime.now().millisecondsSinceEpoch % 1000}';
-      final userName = 'User $userId';
+      return 'Just now';
+    }
+  }
 
-      final conversation = ConversationInfo(
-        id: 'chat_${userId}_${DateTime.now().millisecondsSinceEpoch}',
-        name: userName,
-        isGroup: false,
-      );
+  void _navigateToNewChat(BuildContext context) async {
+    final result = await Navigator.push<Map<String, String>>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const NewChatScreen(),
+      ),
+    );
 
-      _addConversation(conversation);
+    if (result != null) {
+      final otherUserId = result['userId']!;
+      final otherUserName = result['userName']!;
 
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ChatScreen(
-            conversationID: conversation.id,
-            targetUserID: userId,
-            targetUserName: conversation.name,
-            isGroupChat: conversation.isGroup,
-          ),
-        ),
-      ).then((_) => _loadSampleConversations());
+      try {
+        // Create conversation with the selected user
+        final conversationId = await _chatService.createConversation(
+          otherUserId,
+          otherUserName,
+        );
+
+        // Navigate to the chat screen
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ChatScreen(
+                conversationID: conversationId,
+                targetUserID: otherUserId,
+                targetUserName: otherUserName,
+                isGroupChat: false,
+              ),
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error creating conversation: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
     }
   }
 }
