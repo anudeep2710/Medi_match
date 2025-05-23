@@ -47,7 +47,10 @@ class AuthProvider with ChangeNotifier {
 
     try {
       debugPrint('Attempting to sign up user with email: $email');
-      final userCredential = await _firebaseService.signUpWithEmailAndPassword(email, password);
+      final userCredential = await _firebaseService.signUpWithEmailAndPassword(
+        email,
+        password,
+      );
       debugPrint('Sign up successful: ${userCredential.user?.uid}');
       _setLoading(false);
       return true;
@@ -112,7 +115,9 @@ class AuthProvider with ChangeNotifier {
     String errorMessage = error.toString();
 
     if (error is FirebaseAuthException) {
-      debugPrint('Firebase Auth Exception - Code: ${error.code}, Message: ${error.message}');
+      debugPrint(
+        'Firebase Auth Exception - Code: ${error.code}, Message: ${error.message}',
+      );
       switch (error.code) {
         case 'user-not-found':
           errorMessage = 'No user found with this email.';
@@ -136,7 +141,8 @@ class AuthProvider with ChangeNotifier {
           errorMessage = 'Too many requests. Try again later.';
           break;
         case 'operation-not-allowed':
-          errorMessage = 'Email/password authentication is not enabled. Please contact support.';
+          errorMessage =
+              'Email/password authentication is not enabled. Please contact support.';
           break;
         case 'network-request-failed':
           errorMessage = 'Network error. Check your internet connection.';
@@ -145,13 +151,15 @@ class AuthProvider with ChangeNotifier {
           errorMessage = 'Invalid credentials provided.';
           break;
         case 'credential-already-in-use':
-          errorMessage = 'This credential is already associated with another account.';
+          errorMessage =
+              'This credential is already associated with another account.';
           break;
         case 'requires-recent-login':
           errorMessage = 'Please log in again to perform this action.';
           break;
         default:
-          errorMessage = 'Authentication error: ${error.code}\nMessage: ${error.message ?? "Unknown error"}';
+          errorMessage =
+              'Authentication error: ${error.code}\nMessage: ${error.message ?? "Unknown error"}';
           break;
       }
     } else {
@@ -163,7 +171,8 @@ class AuthProvider with ChangeNotifier {
       } else if (errorMessage.contains('TimeoutException')) {
         errorMessage = 'Request timed out. Please try again.';
       } else {
-        errorMessage = 'An unexpected error occurred: ${errorMessage.length > 100 ? errorMessage.substring(0, 100) + "..." : errorMessage}';
+        errorMessage =
+            'An unexpected error occurred: ${errorMessage.length > 100 ? "${errorMessage.substring(0, 100)}..." : errorMessage}';
       }
     }
 

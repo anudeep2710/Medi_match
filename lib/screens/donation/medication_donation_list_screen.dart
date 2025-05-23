@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:medimatch/models/medicine.dart';
-import 'package:medimatch/screens/donation/medication_donation_detail_screen.dart';
+import 'package:medimatch/services/firebase_donation_service.dart' as firebase_donation;
+import 'package:medimatch/screens/donation/firebase_donation_detail_screen.dart';
 import 'package:medimatch/screens/donation/add_donation_screen.dart';
-import 'package:uuid/uuid.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:medimatch/services/firebase_chat_service.dart' as firebase_chat;
+import 'package:medimatch/screens/chat/chat_screen.dart';
 
 class MedicationDonationListScreen extends StatefulWidget {
   const MedicationDonationListScreen({Key? key}) : super(key: key);
@@ -14,110 +16,255 @@ class MedicationDonationListScreen extends StatefulWidget {
 
 class _MedicationDonationListScreenState
     extends State<MedicationDonationListScreen> {
-  final List<MedicationDonation> _donations = [];
-  bool _isLoading = true;
+  final firebase_donation.FirebaseDonationService _donationService = firebase_donation.FirebaseDonationService();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final firebase_chat.FirebaseChatService _chatService = firebase_chat.FirebaseChatService();
+  final TextEditingController _searchController = TextEditingController();
+
+  Stream<List<firebase_donation.MedicationDonation>>? _donationsStream;
+  String _searchQuery = '';
+  bool _showMyDonations = false;
 
   @override
   void initState() {
     super.initState();
-    _loadDonations();
+    _initializeDonationsStream();
   }
 
-  Future<void> _loadDonations() async {
-    // Simulate loading from a database
-    await Future.delayed(const Duration(seconds: 1));
-    
-    // Create sample donations
-    final sampleDonations = [
-      MedicationDonation(
-        id: const Uuid().v4(),
-        medicine: Medicine(
-          name: 'Paracetamol',
-          dosage: '500mg',
-          instructions: 'Take 1-2 tablets every 4-6 hours as needed for pain or fever.',
-          genericName: 'Acetaminophen',
-          genericPrice: 30,
-          brandPrice: 50,
-        ),
-        donorId: 'user1',
-        donorName: 'John Doe',
-        postedDate: DateTime.now().subtract(const Duration(days: 2)),
-        expiryDate: DateTime.now().add(const Duration(days: 365)),
-        quantity: 20,
-        unit: 'tablets',
-        location: 'Downtown, City',
-        distance: '2.5 km away',
-        imageUrl: 'https://www.netmeds.com/images/product-v1/600x600/313925/paracetamol_500mg_tablet_10s_0.jpg',
-      ),
-      MedicationDonation(
-        id: const Uuid().v4(),
-        medicine: Medicine(
-          name: 'Amoxicillin',
-          dosage: '250mg',
-          instructions: 'Take 1 capsule 3 times daily with food.',
-          genericName: 'Amoxicillin',
-          genericPrice: 120,
-          brandPrice: 180,
-        ),
-        donorId: 'user2',
-        donorName: 'Jane Smith',
-        postedDate: DateTime.now().subtract(const Duration(days: 5)),
-        expiryDate: DateTime.now().add(const Duration(days: 180)),
-        quantity: 15,
-        unit: 'capsules',
-        location: 'North Side, City',
-        distance: '4.8 km away',
-        imageUrl: 'https://5.imimg.com/data5/SELLER/Default/2021/1/KO/QG/XG/3823480/amoxicillin-capsules-ip-500x500.jpg',
-        additionalNotes: 'Unopened package. Prescribed but not needed.',
-      ),
-      MedicationDonation(
-        id: const Uuid().v4(),
-        medicine: Medicine(
-          name: 'Cetirizine',
-          dosage: '10mg',
-          instructions: 'Take 1 tablet daily for allergies.',
-          genericName: 'Cetirizine',
-          genericPrice: 40,
-          brandPrice: 85,
-        ),
-        donorId: 'user3',
-        donorName: 'Robert Johnson',
-        postedDate: DateTime.now().subtract(const Duration(days: 1)),
-        expiryDate: DateTime.now().add(const Duration(days: 730)),
-        quantity: 25,
-        unit: 'tablets',
-        location: 'East End, City',
-        distance: '1.2 km away',
-        additionalNotes: 'Allergy medication, only used 5 tablets from a pack of 30.',
-      ),
-    ];
-    
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _initializeDonationsStream() {
     setState(() {
-      _donations.addAll(sampleDonations);
-      _isLoading = false;
+      if (_showMyDonations) {
+        _donationsStream = _donationService.getUserDonationsStream();
+      } else {
+        _donationsStream = _donationService.getDonationsStream();
+      }
     });
+  }
+
+  void _toggleDonationView() {
+    setState(() {
+      _showMyDonations = !_showMyDonations;
+      _initializeDonationsStream();
+    });
+  }
+
+  void _onSearchChanged(String query) {
+    setState(() {
+      _searchQuery = query;
+    });
+  }
+
+  // Sample donation creation removed - only real-time donations from users
+
+  Future<void> _quickChat(firebase_donation.MedicationDonation donation) async {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please log in to start a chat'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (currentUser.uid == donation.donorId) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You cannot chat with yourself'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    try {
+      // Show loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
+      // Create or get existing conversation
+      final conversationId = await _chatService.createConversation(
+        donation.donorId,
+        donation.donorName,
+      );
+
+      // Close loading dialog
+      if (mounted) Navigator.pop(context);
+
+      // Navigate to chat screen
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChatScreen(
+              conversationID: conversationId,
+              targetUserID: donation.donorId,
+              targetUserName: donation.donorName,
+              isGroupChat: false,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      // Close loading dialog if still open
+      if (mounted) Navigator.pop(context);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Error starting chat: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // Old sample data removed - now using Firebase real-time data
+
+  String _formatTimeAgo(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inDays > 0) {
+      return '${difference.inDays}d ago';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours}h ago';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes}m ago';
+    } else {
+      return 'Just now';
+    }
+  }
+
+  String _formatDate(DateTime dateTime) {
+    return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Medication Donations'),
+        title: Text(_showMyDonations ? 'My Donations' : 'Medicine Donations'),
+        backgroundColor: Colors.teal,
+        foregroundColor: Colors.white,
         actions: [
           IconButton(
-            icon: const Icon(Icons.filter_list),
-            onPressed: () {
-              // Show filter options
-              _showFilterOptions(context);
-            },
+            icon: Icon(_showMyDonations ? Icons.public : Icons.person),
+            onPressed: _toggleDonationView,
+            tooltip: _showMyDonations ? 'View All Donations' : 'View My Donations',
+          ),
+          // Sample donations button removed - only real-time donations
+        ],
+      ),
+      body: Column(
+        children: [
+          // Search bar
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search medicines...',
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                filled: true,
+                fillColor: Colors.grey.shade100,
+              ),
+              onChanged: _onSearchChanged,
+            ),
+          ),
+          // Filter chips
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
+              children: [
+                FilterChip(
+                  label: const Text('All Donations'),
+                  selected: !_showMyDonations,
+                  onSelected: (selected) {
+                    if (selected && _showMyDonations) {
+                      _toggleDonationView();
+                    }
+                  },
+                ),
+                const SizedBox(width: 8),
+                FilterChip(
+                  label: const Text('My Donations'),
+                  selected: _showMyDonations,
+                  onSelected: (selected) {
+                    if (selected && !_showMyDonations) {
+                      _toggleDonationView();
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+          // Donations list
+          Expanded(
+            child: _donationsStream == null
+                ? const Center(child: CircularProgressIndicator())
+                : StreamBuilder<List<firebase_donation.MedicationDonation>>(
+                    stream: _donationsStream,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+
+                      if (snapshot.hasError) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.error, size: 64, color: Colors.red.shade300),
+                              const SizedBox(height: 16),
+                              Text('Error: ${snapshot.error}'),
+                              const SizedBox(height: 16),
+                              ElevatedButton(
+                                onPressed: _initializeDonationsStream,
+                                child: const Text('Retry'),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      final donations = snapshot.data ?? [];
+
+                      // Filter donations based on search query
+                      final filteredDonations = _searchQuery.isEmpty
+                          ? donations
+                          : donations.where((donation) =>
+                              donation.medicine.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                              donation.donorName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                              donation.location.toLowerCase().contains(_searchQuery.toLowerCase())
+                            ).toList();
+
+                      if (filteredDonations.isEmpty) {
+                        return _buildEmptyState();
+                      }
+
+                      return _buildDonationsList(filteredDonations);
+                    },
+                  ),
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _donations.isEmpty
-              ? _buildEmptyState()
-              : _buildDonationsList(),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           // Navigate to add donation screen
@@ -126,13 +273,8 @@ class _MedicationDonationListScreenState
             MaterialPageRoute(
               builder: (context) => const AddDonationScreen(),
             ),
-          ).then((newDonation) {
-            if (newDonation != null) {
-              setState(() {
-                _donations.add(newDonation);
-              });
-            }
-          });
+          );
+          // No need to manually add - Firebase real-time updates will handle this
         },
         child: const Icon(Icons.add),
       ),
@@ -150,18 +292,20 @@ class _MedicationDonationListScreenState
             color: Colors.grey,
           ),
           const SizedBox(height: 16),
-          const Text(
-            'No medication donations yet',
-            style: TextStyle(
+          Text(
+            _showMyDonations ? 'No donations yet' : 'No donations available',
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Be the first to donate unused medications',
+          Text(
+            _showMyDonations
+              ? 'Create your first donation to help others'
+              : 'Check back later for new donations from the community',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey),
+            style: const TextStyle(color: Colors.grey),
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
@@ -174,7 +318,7 @@ class _MedicationDonationListScreenState
               ).then((newDonation) {
                 if (newDonation != null) {
                   setState(() {
-                    _donations.add(newDonation);
+                    // Firebase real-time updates handle this automatically
                   });
                 }
               });
@@ -187,12 +331,12 @@ class _MedicationDonationListScreenState
     );
   }
 
-  Widget _buildDonationsList() {
+  Widget _buildDonationsList(List<firebase_donation.MedicationDonation> donations) {
     return ListView.builder(
       padding: const EdgeInsets.all(16.0),
-      itemCount: _donations.length,
+      itemCount: donations.length,
       itemBuilder: (context, index) {
-        final donation = _donations[index];
+        final donation = donations[index];
         return Card(
           margin: const EdgeInsets.only(bottom: 16.0),
           child: InkWell(
@@ -200,7 +344,7 @@ class _MedicationDonationListScreenState
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => MedicationDonationDetailScreen(
+                  builder: (context) => FirebaseDonationDetailScreen(
                     donation: donation,
                   ),
                 ),
@@ -210,31 +354,42 @@ class _MedicationDonationListScreenState
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Medication image
-                if (donation.imageUrl != null)
-                  ClipRRect(
+                // Medication image placeholder (no external images)
+                Container(
+                  height: 120,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.teal.shade50,
                     borderRadius: const BorderRadius.vertical(
                       top: Radius.circular(4.0),
                     ),
-                    child: Image.network(
-                      donation.imageUrl!,
-                      height: 150,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          height: 150,
-                          width: double.infinity,
-                          color: Colors.grey.shade200,
-                          child: const Icon(
-                            Icons.medication,
-                            size: 64,
-                            color: Colors.grey,
-                          ),
-                        );
-                      },
-                    ),
                   ),
-                
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.medical_services,
+                        size: 40,
+                        color: Colors.teal.shade400,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        donation.medicine.name.isNotEmpty
+                          ? donation.medicine.name
+                          : 'Unknown Medicine',
+                        style: TextStyle(
+                          color: Colors.teal.shade700,
+                          fontWeight: FontWeight.w500,
+                          fontSize: 12,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
@@ -263,7 +418,7 @@ class _MedicationDonationListScreenState
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            donation.distance,
+                            donation.distance ?? 'Unknown distance',
                             style: TextStyle(
                               color: Theme.of(context).colorScheme.primary,
                             ),
@@ -283,21 +438,78 @@ class _MedicationDonationListScreenState
                           CircleAvatar(
                             radius: 12,
                             child: Text(
-                              donation.donorName[0].toUpperCase(),
+                              donation.donorName.isNotEmpty
+                                ? donation.donorName[0].toUpperCase()
+                                : 'U',
                               style: const TextStyle(fontSize: 10),
                             ),
                           ),
                           const SizedBox(width: 4),
-                          Text(
-                            donation.donorName,
-                            style: const TextStyle(fontSize: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  donation.donorName,
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                                ),
+                                if (donation.donorEmail != null)
+                                  Text(
+                                    donation.donorEmail!,
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.teal.shade600,
+                                    ),
+                                  ),
+                              ],
+                            ),
                           ),
-                          const Spacer(),
+                          // Quick Chat Button (only for other users' donations)
+                          if (_auth.currentUser?.uid != donation.donorId && donation.isAvailable) ...[
+                            IconButton(
+                              onPressed: () => _quickChat(donation),
+                              icon: const Icon(Icons.chat_bubble_outline),
+                              iconSize: 18,
+                              color: Colors.teal,
+                              tooltip: 'Quick Chat',
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                            ),
+                          ],
                           Text(
                             'Expires: ${_formatDate(donation.expiryDate)}',
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      // Availability status
+                      Row(
+                        children: [
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: donation.isAvailable
+                                ? Colors.green.shade100
+                                : Colors.red.shade100,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              donation.isAvailable ? 'Available' : 'Unavailable',
+                              style: TextStyle(
+                                color: donation.isAvailable
+                                  ? Colors.green.shade800
+                                  : Colors.red.shade800,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
                         ],
@@ -313,9 +525,7 @@ class _MedicationDonationListScreenState
     );
   }
 
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
-  }
+  // Duplicate _formatDate method removed
 
   void _showFilterOptions(BuildContext context) {
     showModalBottomSheet(
@@ -342,15 +552,10 @@ class _MedicationDonationListScreenState
                 onTap: () {
                   Navigator.pop(context);
                   // Sort by distance
-                  setState(() {
-                    _donations.sort((a, b) {
-                      final distanceA = double.parse(
-                          a.distance.replaceAll(' km away', ''));
-                      final distanceB = double.parse(
-                          b.distance.replaceAll(' km away', ''));
-                      return distanceA.compareTo(distanceB);
-                    });
-                  });
+                  // TODO: Implement distance sorting with Firebase
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Distance sorting coming soon!')),
+                  );
                 },
               ),
               ListTile(
@@ -359,10 +564,10 @@ class _MedicationDonationListScreenState
                 onTap: () {
                   Navigator.pop(context);
                   // Sort by posted date
-                  setState(() {
-                    _donations.sort((a, b) =>
-                        b.postedDate.compareTo(a.postedDate));
-                  });
+                  // Firebase already sorts by posted date
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Already sorted by most recent!')),
+                  );
                 },
               ),
               ListTile(
@@ -371,10 +576,10 @@ class _MedicationDonationListScreenState
                 onTap: () {
                   Navigator.pop(context);
                   // Sort by expiry date
-                  setState(() {
-                    _donations.sort((a, b) =>
-                        a.expiryDate.compareTo(b.expiryDate));
-                  });
+                  // TODO: Implement expiry date sorting with Firebase
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Expiry sorting coming soon!')),
+                  );
                 },
               ),
             ],

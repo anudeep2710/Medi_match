@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:medimatch/services/chat_service.dart';
+import 'package:medimatch/services/firebase_chat_service.dart' as firebase_chat;
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class NewChatScreen extends StatefulWidget {
   final bool isGroup;
@@ -15,16 +17,20 @@ class NewChatScreen extends StatefulWidget {
 
 class _NewChatScreenState extends State<NewChatScreen> {
   final TextEditingController _searchController = TextEditingController();
-  final List<UserContact> _allContacts = [];
-  List<UserContact> _filteredContacts = [];
-  List<UserContact> _selectedContacts = [];
-  bool _isLoading = true;
+  final firebase_chat.FirebaseChatService _chatService = firebase_chat.FirebaseChatService();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  List<firebase_chat.UserProfile> _allUsers = [];
+  List<firebase_chat.UserProfile> _filteredUsers = [];
+  List<firebase_chat.UserProfile> _selectedUsers = [];
+  bool _isLoading = false;
+  String _searchQuery = '';
   final TextEditingController _groupNameController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _loadContacts();
+    // Don't load contacts immediately - wait for user to search
   }
 
   @override
@@ -34,130 +40,177 @@ class _NewChatScreenState extends State<NewChatScreen> {
     super.dispose();
   }
 
-  Future<void> _loadContacts() async {
+  Future<void> _searchUsers(String query) async {
+    if (query.trim().isEmpty) {
+      setState(() {
+        _filteredUsers = [];
+        _searchQuery = '';
+      });
+      return;
+    }
+
     setState(() {
       _isLoading = true;
+      _searchQuery = query;
     });
 
     try {
-      // In a real app, you would load contacts from a backend
-      // For this example, we'll use mock data
-      final sampleContacts = [
-        UserContact(
-          id: 'user1',
-          name: 'John Doe',
-          avatar: 'https://randomuser.me/api/portraits/men/1.jpg',
-        ),
-        UserContact(
-          id: 'user2',
-          name: 'Jane Smith',
-          avatar: 'https://randomuser.me/api/portraits/women/1.jpg',
-        ),
-        UserContact(
-          id: 'user3',
-          name: 'Robert Johnson',
-          avatar: 'https://randomuser.me/api/portraits/men/2.jpg',
-        ),
-        UserContact(
-          id: 'user4',
-          name: 'Emily Davis',
-          avatar: 'https://randomuser.me/api/portraits/women/2.jpg',
-        ),
-        UserContact(
-          id: 'user5',
-          name: 'Michael Wilson',
-          avatar: 'https://randomuser.me/api/portraits/men/3.jpg',
-        ),
-      ];
-      
+      // Search for real users in Firebase
+      final users = await _chatService.searchUsers(query.trim());
+
+      // Filter out current user
+      final currentUserId = _auth.currentUser?.uid;
+      final filteredUsers = users.where((user) => user.uid != currentUserId).toList();
+
       setState(() {
-        _allContacts.addAll(sampleContacts);
-        _filteredContacts = List.from(_allContacts);
+        _filteredUsers = filteredUsers;
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint('Error loading contacts: $e');
+      debugPrint('Error searching users: $e');
       setState(() {
         _isLoading = false;
       });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error searching users: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
-  void _filterContacts(String query) {
-    setState(() {
-      if (query.isEmpty) {
-        _filteredContacts = List.from(_allContacts);
-      } else {
-        _filteredContacts = _allContacts
-            .where((contact) =>
-                contact.name.toLowerCase().contains(query.toLowerCase()))
-            .toList();
+  void _onSearchChanged(String query) {
+    // Debounce search to avoid too many API calls
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (_searchController.text == query) {
+        _searchUsers(query);
       }
     });
   }
 
-  void _toggleContactSelection(UserContact contact) {
+  void _toggleUserSelection(firebase_chat.UserProfile user) {
     setState(() {
-      if (_selectedContacts.contains(contact)) {
-        _selectedContacts.remove(contact);
+      if (_selectedUsers.contains(user)) {
+        _selectedUsers.remove(user);
       } else {
-        _selectedContacts.add(contact);
+        if (widget.isGroup) {
+          _selectedUsers.add(user);
+        } else {
+          // For one-on-one chat, only allow one selection
+          _selectedUsers = [user];
+        }
       }
     });
   }
 
-  void _createChat() {
+  void _createChat() async {
     if (widget.isGroup) {
-      if (_selectedContacts.isEmpty) {
+      if (_selectedUsers.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select at least one contact')),
+          const SnackBar(content: Text('Please select at least one user')),
         );
         return;
       }
-      
+
       if (_groupNameController.text.trim().isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Please enter a group name')),
         );
         return;
       }
-      
-      // Create a group chat
-      final groupName = _groupNameController.text.trim();
-      final groupID = 'group_${DateTime.now().millisecondsSinceEpoch}';
-      
-      // In a real app, you would create the group on your backend
-      // For now, we'll just return the group info
-      Navigator.pop(
-        context,
-        ChatConversation(
-          id: groupID,
-          userId: groupID,
-          name: groupName,
-          isGroup: true,
-        ),
+
+      // TODO: Implement group chat creation
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Group chat feature coming soon!')),
       );
     } else {
-      if (_selectedContacts.length != 1) {
+      if (_selectedUsers.length != 1) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select one contact')),
+          const SnackBar(content: Text('Please select one user')),
         );
         return;
       }
-      
-      // Create a one-on-one chat
-      final contact = _selectedContacts.first;
-      final conversationID = 'chat_${contact.id}_${DateTime.now().millisecondsSinceEpoch}';
-      
-      Navigator.pop(
-        context,
-        ChatConversation(
-          id: conversationID,
-          userId: contact.id,
-          name: contact.name,
-          isGroup: false,
-        ),
-      );
+
+      // Create a one-on-one chat with real Firebase user
+      final selectedUser = _selectedUsers.first;
+
+      // Return user info to parent screen
+      Navigator.pop(context, {
+        'userId': selectedUser.uid,
+        'userName': selectedUser.displayName,
+      });
+    }
+  }
+
+  Future<void> _createTestUsers() async {
+    try {
+      final firestore = FirebaseFirestore.instance;
+
+      // Test users to create
+      final testUsers = [
+        {
+          'uid': 'test_user_1',
+          'displayName': 'Dr. Sarah Johnson',
+          'email': 'sarah.johnson@medimatch.com',
+          'photoUrl': null,
+          'location': 'New York, NY',
+          'isOnline': true,
+          'lastSeen': FieldValue.serverTimestamp(),
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        {
+          'uid': 'test_user_2',
+          'displayName': 'Mike Chen',
+          'email': 'mike.chen@medimatch.com',
+          'photoUrl': null,
+          'location': 'San Francisco, CA',
+          'isOnline': false,
+          'lastSeen': FieldValue.serverTimestamp(),
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        {
+          'uid': 'test_user_3',
+          'displayName': 'Emily Rodriguez',
+          'email': 'emily.rodriguez@medimatch.com',
+          'photoUrl': null,
+          'location': 'Los Angeles, CA',
+          'isOnline': true,
+          'lastSeen': FieldValue.serverTimestamp(),
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+      ];
+
+      // Create users in Firestore
+      for (final userData in testUsers) {
+        final uid = userData['uid'] as String;
+        await firestore.collection('users').doc(uid).set(userData);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Test users created! Try searching for "Sarah", "Mike", or "Emily"'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Error creating test users: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -167,7 +220,7 @@ class _NewChatScreenState extends State<NewChatScreen> {
       appBar: AppBar(
         title: Text(widget.isGroup ? 'New Group' : 'New Chat'),
         actions: [
-          if (_selectedContacts.isNotEmpty)
+          if (_selectedUsers.isNotEmpty)
             TextButton(
               onPressed: _createChat,
               child: Text(
@@ -183,15 +236,25 @@ class _NewChatScreenState extends State<NewChatScreen> {
             padding: const EdgeInsets.all(16.0),
             child: TextField(
               controller: _searchController,
-              decoration: const InputDecoration(
-                hintText: 'Search contacts...',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                hintText: 'Search users by name...',
+                prefixIcon: const Icon(Icons.search),
+                border: const OutlineInputBorder(),
+                suffixIcon: _isLoading
+                  ? const Padding(
+                      padding: EdgeInsets.all(12.0),
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
+                  : null,
               ),
-              onChanged: _filterContacts,
+              onChanged: _onSearchChanged,
             ),
           ),
-          if (widget.isGroup && _selectedContacts.isNotEmpty)
+          if (widget.isGroup && _selectedUsers.isNotEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: TextField(
@@ -203,33 +266,56 @@ class _NewChatScreenState extends State<NewChatScreen> {
                 ),
               ),
             ),
-          if (_selectedContacts.isNotEmpty) _buildSelectedContactsChips(),
+          if (_selectedUsers.isNotEmpty) _buildSelectedUsersChips(),
           Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _filteredContacts.isEmpty
-                    ? const Center(child: Text('No contacts found'))
+            child: _searchQuery.isEmpty
+                ? _buildEmptySearchState()
+                : _filteredUsers.isEmpty && !_isLoading
+                    ? _buildNoUsersFound()
                     : ListView.builder(
-                        itemCount: _filteredContacts.length,
+                        itemCount: _filteredUsers.length,
                         itemBuilder: (context, index) {
-                          final contact = _filteredContacts[index];
-                          final isSelected = _selectedContacts.contains(contact);
-                          
+                          final user = _filteredUsers[index];
+                          final isSelected = _selectedUsers.contains(user);
+
                           return ListTile(
                             leading: CircleAvatar(
-                              backgroundImage: contact.avatar != null
-                                  ? NetworkImage(contact.avatar!)
+                              backgroundColor: Colors.teal.shade100,
+                              backgroundImage: user.photoUrl != null
+                                  ? NetworkImage(user.photoUrl!)
                                   : null,
-                              child: contact.avatar == null
-                                  ? Text(contact.name[0].toUpperCase())
+                              child: user.photoUrl == null
+                                  ? Text(
+                                      user.displayName.isNotEmpty
+                                        ? user.displayName[0].toUpperCase()
+                                        : 'U',
+                                      style: TextStyle(
+                                        color: Colors.teal.shade800,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    )
                                   : null,
                             ),
-                            title: Text(contact.name),
-                            trailing: isSelected
-                                ? const Icon(Icons.check_circle,
-                                    color: Colors.green)
-                                : null,
-                            onTap: () => _toggleContactSelection(contact),
+                            title: Text(user.displayName),
+                            subtitle: user.email != null ? Text(user.email!) : null,
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (user.isOnline)
+                                  Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: const BoxDecoration(
+                                      color: Colors.green,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                const SizedBox(width: 8),
+                                if (isSelected)
+                                  const Icon(Icons.check_circle, color: Colors.green),
+                              ],
+                            ),
+                            onTap: () => _toggleUserSelection(user),
                           );
                         },
                       ),
@@ -239,26 +325,116 @@ class _NewChatScreenState extends State<NewChatScreen> {
     );
   }
 
-  Widget _buildSelectedContactsChips() {
+  Widget _buildEmptySearchState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.search,
+            size: 64,
+            color: Colors.grey.shade400,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Search for users',
+            style: TextStyle(
+              fontSize: 18,
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Type a name to find other MediMatch users',
+            style: TextStyle(
+              color: Colors.grey.shade500,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoUsersFound() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.person_search,
+            size: 64,
+            color: Colors.grey.shade400,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No users found',
+            style: TextStyle(
+              fontSize: 18,
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Try searching with a different name',
+            style: TextStyle(
+              color: Colors.grey.shade500,
+            ),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: _createTestUsers,
+            icon: const Icon(Icons.add_circle_outline),
+            label: const Text('Create Test Users'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.teal,
+              foregroundColor: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'For development testing only',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade400,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSelectedUsersChips() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       alignment: Alignment.centerLeft,
       child: Wrap(
         spacing: 8.0,
         runSpacing: 4.0,
-        children: _selectedContacts.map((contact) {
+        children: _selectedUsers.map((user) {
           return Chip(
             avatar: CircleAvatar(
-              backgroundImage: contact.avatar != null
-                  ? NetworkImage(contact.avatar!)
+              backgroundColor: Colors.teal.shade100,
+              backgroundImage: user.photoUrl != null
+                  ? NetworkImage(user.photoUrl!)
                   : null,
-              child: contact.avatar == null
-                  ? Text(contact.name[0].toUpperCase())
+              child: user.photoUrl == null
+                  ? Text(
+                      user.displayName.isNotEmpty
+                        ? user.displayName[0].toUpperCase()
+                        : 'U',
+                      style: TextStyle(
+                        color: Colors.teal.shade800,
+                        fontSize: 12,
+                      ),
+                    )
                   : null,
             ),
-            label: Text(contact.name),
+            label: Text(user.displayName),
             deleteIcon: const Icon(Icons.close, size: 18),
-            onDeleted: () => _toggleContactSelection(contact),
+            onDeleted: () => _toggleUserSelection(user),
           );
         }).toList(),
       ),
@@ -266,23 +442,4 @@ class _NewChatScreenState extends State<NewChatScreen> {
   }
 }
 
-class UserContact {
-  final String id;
-  final String name;
-  final String? avatar;
-
-  UserContact({
-    required this.id,
-    required this.name,
-    this.avatar,
-  });
-
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    return other is UserContact && other.id == id;
-  }
-
-  @override
-  int get hashCode => id.hashCode;
-}
+// UserContact class removed - now using firebase_chat.UserProfile

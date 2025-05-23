@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:medimatch/utils/firebase_test.dart';
 
@@ -41,41 +40,41 @@ class _FirebaseTestScreenState extends State<FirebaseTestScreen> {
     try {
       // Run comprehensive Firebase tests
       final results = await FirebaseTest.testFirebaseConnection();
-      
+
       // Display results
       String statusMessage = '';
       Color statusColor = Colors.green;
-      
+
       if (results['firebase_initialized'] == true) {
         statusMessage += '✅ Firebase initialized\n';
       } else {
         statusMessage += '❌ Firebase initialization failed\n';
         statusColor = Colors.red;
       }
-      
+
       if (results['auth_configured'] == true) {
         statusMessage += '✅ Auth configured\n';
       } else {
         statusMessage += '❌ Auth configuration error\n';
         statusColor = Colors.red;
       }
-      
+
       if (results['network_connectivity'] == true) {
         statusMessage += '✅ Network connectivity\n';
       } else {
         statusMessage += '❌ Network connectivity failed\n';
         statusColor = Colors.red;
       }
-      
+
       if (results['email_auth_enabled'] == true) {
         statusMessage += '✅ Email/Password auth enabled\n';
       } else {
         statusMessage += '❌ Email/Password auth NOT enabled\n';
         statusColor = Colors.red;
       }
-      
+
       _updateStatus(statusMessage.trim(), statusColor);
-      
+
     } catch (e) {
       _updateStatus('Test failed: $e', Colors.red);
     }
@@ -97,7 +96,7 @@ class _FirebaseTestScreenState extends State<FirebaseTestScreen> {
         _emailController.text.trim(),
         _passwordController.text,
       );
-      
+
       if (results['registration_success'] == true) {
         _updateStatus('✅ Registration test successful!', Colors.green);
       } else {
@@ -105,7 +104,7 @@ class _FirebaseTestScreenState extends State<FirebaseTestScreen> {
         final errorMessage = results['error_message'] ?? 'Unknown error';
         _updateStatus('❌ Registration failed:\nCode: $errorCode\nMessage: $errorMessage', Colors.red);
       }
-      
+
     } catch (e) {
       _updateStatus('Registration test failed: $e', Colors.red);
     }
@@ -124,25 +123,25 @@ class _FirebaseTestScreenState extends State<FirebaseTestScreen> {
 
     try {
       final firestore = FirebaseFirestore.instance;
-      
+
       // Try to write a test document
       await firestore.collection('test').doc('connection_test').set({
         'timestamp': FieldValue.serverTimestamp(),
         'message': 'Firebase connection test',
       });
-      
+
       // Try to read it back
       final doc = await firestore.collection('test').doc('connection_test').get();
-      
+
       if (doc.exists) {
         _updateStatus('✅ Firestore connection successful!', Colors.green);
-        
+
         // Clean up test document
         await firestore.collection('test').doc('connection_test').delete();
       } else {
         _updateStatus('❌ Firestore read failed', Colors.red);
       }
-      
+
     } catch (e) {
       _updateStatus('❌ Firestore test failed: $e', Colors.red);
     }
@@ -193,9 +192,9 @@ class _FirebaseTestScreenState extends State<FirebaseTestScreen> {
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 24),
-            
+
             // Test Email Field
             TextField(
               controller: _emailController,
@@ -206,9 +205,9 @@ class _FirebaseTestScreenState extends State<FirebaseTestScreen> {
               ),
               keyboardType: TextInputType.emailAddress,
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Test Password Field
             TextField(
               controller: _passwordController,
@@ -219,9 +218,9 @@ class _FirebaseTestScreenState extends State<FirebaseTestScreen> {
               ),
               obscureText: true,
             ),
-            
+
             const SizedBox(height: 24),
-            
+
             // Test Buttons
             if (_isLoading)
               const Center(child: CircularProgressIndicator())
@@ -238,9 +237,9 @@ class _FirebaseTestScreenState extends State<FirebaseTestScreen> {
                       minimumSize: const Size(double.infinity, 48),
                     ),
                   ),
-                  
+
                   const SizedBox(height: 12),
-                  
+
                   ElevatedButton.icon(
                     onPressed: _testRegistration,
                     icon: const Icon(Icons.person_add),
@@ -251,9 +250,9 @@ class _FirebaseTestScreenState extends State<FirebaseTestScreen> {
                       minimumSize: const Size(double.infinity, 48),
                     ),
                   ),
-                  
+
                   const SizedBox(height: 12),
-                  
+
                   ElevatedButton.icon(
                     onPressed: _testFirestore,
                     icon: const Icon(Icons.storage),
@@ -266,9 +265,9 @@ class _FirebaseTestScreenState extends State<FirebaseTestScreen> {
                   ),
                 ],
               ),
-            
+
             const SizedBox(height: 24),
-            
+
             // Instructions Card
             Card(
               color: Colors.orange.withOpacity(0.1),

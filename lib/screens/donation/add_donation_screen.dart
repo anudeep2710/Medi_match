@@ -1,9 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:medimatch/models/medicine.dart';
-import 'package:medimatch/screens/donation/medication_donation_detail_screen.dart';
-import 'package:uuid/uuid.dart';
+import 'package:medimatch/services/firebase_donation_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AddDonationScreen extends StatefulWidget {
   const AddDonationScreen({Key? key}) : super(key: key);
@@ -21,7 +20,13 @@ class _AddDonationScreenState extends State<AddDonationScreen> {
   final _unitController = TextEditingController();
   final _locationController = TextEditingController();
   final _notesController = TextEditingController();
-  
+  final _genericNameController = TextEditingController();
+  final _genericPriceController = TextEditingController();
+  final _brandPriceController = TextEditingController();
+
+  final FirebaseDonationService _donationService = FirebaseDonationService();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
   DateTime _expiryDate = DateTime.now().add(const Duration(days: 180));
   File? _imageFile;
   bool _isLoading = false;
@@ -48,7 +53,7 @@ class _AddDonationScreenState extends State<AddDonationScreen> {
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-    
+
     if (image != null) {
       setState(() {
         _imageFile = File(image.path);
@@ -63,7 +68,7 @@ class _AddDonationScreenState extends State<AddDonationScreen> {
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
     );
-    
+
     if (picked != null && picked != _expiryDate) {
       setState(() {
         _expiryDate = picked;
@@ -71,47 +76,82 @@ class _AddDonationScreenState extends State<AddDonationScreen> {
     }
   }
 
-  void _submitDonation() {
+  Future<void> _submitDonation() async {
     if (_formKey.currentState!.validate()) {
+      final currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please log in to create a donation'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
       setState(() {
         _isLoading = true;
       });
-      
-      // Simulate API call
-      Future.delayed(const Duration(seconds: 1), () {
-        // Create medicine object
-        final medicine = Medicine(
-          name: _medicationNameController.text,
-          dosage: _dosageController.text,
-          instructions: _instructionsController.text,
-          genericName: '',
-          genericPrice: null,
-          brandPrice: null,
-        );
-        
-        // Create donation object
-        final donation = MedicationDonation(
-          id: const Uuid().v4(),
-          medicine: medicine,
-          donorId: 'current_user_id', // In a real app, this would be the current user's ID
-          donorName: 'You', // In a real app, this would be the current user's name
-          postedDate: DateTime.now(),
+
+      try {
+        // Parse prices
+        double? genericPrice;
+        double? brandPrice;
+
+        if (_genericPriceController.text.isNotEmpty) {
+          genericPrice = double.tryParse(_genericPriceController.text);
+        }
+
+        if (_brandPriceController.text.isNotEmpty) {
+          brandPrice = double.tryParse(_brandPriceController.text);
+        }
+
+        // Create donation in Firebase
+        await _donationService.createDonation(
+          medicineName: _medicationNameController.text.trim(),
+          dosage: _dosageController.text.trim(),
+          instructions: _instructionsController.text.trim(),
           expiryDate: _expiryDate,
           quantity: int.parse(_quantityController.text),
-          unit: _unitController.text.isNotEmpty ? _unitController.text : null,
-          location: _locationController.text,
-          distance: '0 km away', // For the current user's donation
-          imageUrl: _imageFile != null ? _imageFile!.path : null, // In a real app, this would be a URL after uploading
-          additionalNotes: _notesController.text.isNotEmpty ? _notesController.text : null,
+          unit: _unitController.text.isNotEmpty ? _unitController.text.trim() : null,
+          location: _locationController.text.trim(),
+          imageUrl: null, // Images disabled to avoid loading errors
+          additionalNotes: _notesController.text.isNotEmpty ? _notesController.text.trim() : null,
+          genericName: _genericNameController.text.isNotEmpty ? _genericNameController.text.trim() : null,
+          genericPrice: genericPrice,
+          brandPrice: brandPrice,
         );
-        
+
         setState(() {
           _isLoading = false;
         });
-        
-        // Return the donation to the previous screen
-        Navigator.pop(context, donation);
-      });
+
+        // Show success message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✅ Donation created successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+
+          // Return to previous screen
+          Navigator.pop(context);
+        }
+      } catch (e) {
+        setState(() {
+          _isLoading = false;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('❌ Error creating donation: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -169,9 +209,9 @@ class _AddDonationScreenState extends State<AddDonationScreen> {
                         ),
                       ),
                     ),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // Medication details
                     TextFormField(
                       controller: _medicationNameController,
@@ -186,9 +226,9 @@ class _AddDonationScreenState extends State<AddDonationScreen> {
                         return null;
                       },
                     ),
-                    
+
                     const SizedBox(height: 16),
-                    
+
                     TextFormField(
                       controller: _dosageController,
                       decoration: const InputDecoration(
@@ -203,9 +243,9 @@ class _AddDonationScreenState extends State<AddDonationScreen> {
                         return null;
                       },
                     ),
-                    
+
                     const SizedBox(height: 16),
-                    
+
                     TextFormField(
                       controller: _instructionsController,
                       decoration: const InputDecoration(
@@ -215,9 +255,9 @@ class _AddDonationScreenState extends State<AddDonationScreen> {
                       ),
                       maxLines: 2,
                     ),
-                    
+
                     const SizedBox(height: 16),
-                    
+
                     // Quantity and unit
                     Row(
                       children: [
@@ -255,9 +295,9 @@ class _AddDonationScreenState extends State<AddDonationScreen> {
                         ),
                       ],
                     ),
-                    
+
                     const SizedBox(height: 16),
-                    
+
                     // Expiry date
                     GestureDetector(
                       onTap: () => _selectExpiryDate(context),
@@ -280,9 +320,9 @@ class _AddDonationScreenState extends State<AddDonationScreen> {
                         ),
                       ),
                     ),
-                    
+
                     const SizedBox(height: 16),
-                    
+
                     // Location
                     TextFormField(
                       controller: _locationController,
@@ -298,9 +338,52 @@ class _AddDonationScreenState extends State<AddDonationScreen> {
                         return null;
                       },
                     ),
-                    
+
                     const SizedBox(height: 16),
-                    
+
+                    // Generic Name
+                    TextFormField(
+                      controller: _genericNameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Generic Name (Optional)',
+                        hintText: 'e.g., Acetaminophen',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Price Information
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _genericPriceController,
+                            decoration: const InputDecoration(
+                              labelText: 'Generic Price (₹)',
+                              hintText: '0.00',
+                              border: OutlineInputBorder(),
+                            ),
+                            keyboardType: TextInputType.number,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _brandPriceController,
+                            decoration: const InputDecoration(
+                              labelText: 'Brand Price (₹)',
+                              hintText: '0.00',
+                              border: OutlineInputBorder(),
+                            ),
+                            keyboardType: TextInputType.number,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+
                     // Additional notes
                     TextFormField(
                       controller: _notesController,
@@ -311,9 +394,9 @@ class _AddDonationScreenState extends State<AddDonationScreen> {
                       ),
                       maxLines: 3,
                     ),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // Submit button
                     SizedBox(
                       width: double.infinity,
@@ -325,9 +408,9 @@ class _AddDonationScreenState extends State<AddDonationScreen> {
                         child: const Text('Donate Medication'),
                       ),
                     ),
-                    
+
                     const SizedBox(height: 16),
-                    
+
                     // Disclaimer
                     Card(
                       color: Colors.amber.shade50,

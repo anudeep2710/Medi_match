@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 
 /// Firebase-powered real-time chat service for MediMatch
 class FirebaseChatService {
@@ -21,35 +20,48 @@ class FirebaseChatService {
   /// Create or get a conversation between two users
   Future<String> createConversation(String otherUserId, String otherUserName) async {
     final currentUser = _auth.currentUser;
-    if (currentUser == null) throw Exception('User not authenticated');
+    if (currentUser == null) {
+      print('❌ User not authenticated for chat');
+      throw Exception('User not authenticated');
+    }
+
+    print('✅ Creating conversation between ${currentUser.uid} and $otherUserId');
 
     // Create conversation ID by sorting user IDs to ensure consistency
     final userIds = [currentUser.uid, otherUserId]..sort();
     final conversationId = '${userIds[0]}_${userIds[1]}';
 
-    // Check if conversation already exists
-    final conversationDoc = await _firestore
-        .collection('conversations')
-        .doc(conversationId)
-        .get();
+    try {
+      // Check if conversation already exists
+      final conversationDoc = await _firestore
+          .collection('conversations')
+          .doc(conversationId)
+          .get();
 
-    if (!conversationDoc.exists) {
-      // Create new conversation
-      await _firestore.collection('conversations').doc(conversationId).set({
-        'id': conversationId,
-        'participants': userIds,
-        'participantNames': {
-          currentUser.uid: currentUserName,
-          otherUserId: otherUserName,
-        },
-        'lastMessage': '',
-        'lastMessageTime': FieldValue.serverTimestamp(),
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+      if (!conversationDoc.exists) {
+        // Create new conversation
+        await _firestore.collection('conversations').doc(conversationId).set({
+          'id': conversationId,
+          'participants': [currentUser.uid, otherUserId],
+          'participantNames': {
+            currentUser.uid: currentUserName,
+            otherUserId: otherUserName,
+          },
+          'lastMessage': '',
+          'lastMessageTime': FieldValue.serverTimestamp(),
+          'createdAt': FieldValue.serverTimestamp(),
+          'isGroup': false,
+        });
+        print('✅ New conversation created: $conversationId');
+      } else {
+        print('✅ Existing conversation found: $conversationId');
+      }
+
+      return conversationId;
+    } catch (e) {
+      print('❌ Error creating conversation: $e');
+      throw Exception('Failed to create conversation: $e');
     }
-
-    return conversationId;
   }
 
   /// Send a message in a conversation
@@ -79,17 +91,16 @@ class FirebaseChatService {
     await _firestore.collection('conversations').doc(conversationId).update({
       'lastMessage': content,
       'lastMessageTime': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
     });
   }
 
-  /// Get real-time stream of messages for a conversation
+  /// Get messages stream for a conversation
   Stream<List<ChatMessage>> getMessagesStream(String conversationId) {
     return _firestore
         .collection('conversations')
         .doc(conversationId)
         .collection('messages')
-        .orderBy('timestamp', descending: false)
+        .orderBy('timestamp', descending: true)
         .snapshots()
         .map((snapshot) {
       return snapshot.docs.map((doc) {
@@ -99,10 +110,12 @@ class FirebaseChatService {
     });
   }
 
-  /// Get real-time stream of conversations for current user
+  /// Get conversations stream for current user
   Stream<List<ChatConversation>> getConversationsStream() {
     final currentUser = _auth.currentUser;
-    if (currentUser == null) return Stream.value([]);
+    if (currentUser == null) {
+      return Stream.value([]);
+    }
 
     return _firestore
         .collection('conversations')
@@ -117,24 +130,30 @@ class FirebaseChatService {
     });
   }
 
-  /// Mark messages as read
-  Future<void> markMessagesAsRead(String conversationId) async {
+  /// Update user profile
+  Future<void> updateUserProfile({String? displayName, String? photoUrl}) async {
     final currentUser = _auth.currentUser;
     if (currentUser == null) return;
 
-    final messagesQuery = await _firestore
-        .collection('conversations')
-        .doc(conversationId)
-        .collection('messages')
-        .where('senderId', isNotEqualTo: currentUser.uid)
-        .where('isRead', isEqualTo: false)
-        .get();
+    await _firestore.collection('users').doc(currentUser.uid).set({
+      'uid': currentUser.uid,
+      'displayName': displayName ?? currentUserName,
+      'email': currentUser.email,
+      'photoUrl': photoUrl,
+      'lastSeen': FieldValue.serverTimestamp(),
+      'isOnline': true,
+    }, SetOptions(merge: true));
+  }
 
-    final batch = _firestore.batch();
-    for (final doc in messagesQuery.docs) {
-      batch.update(doc.reference, {'isRead': true});
-    }
-    await batch.commit();
+  /// Set user online status
+  Future<void> setUserOnlineStatus(bool isOnline) async {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) return;
+
+    await _firestore.collection('users').doc(currentUser.uid).update({
+      'isOnline': isOnline,
+      'lastSeen': FieldValue.serverTimestamp(),
+    });
   }
 
   /// Search for users to start a conversation
@@ -153,48 +172,15 @@ class FirebaseChatService {
       return UserProfile.fromFirestore(data, doc.id);
     }).toList();
   }
-
-  /// Create or update user profile
-  Future<void> updateUserProfile({
-    required String displayName,
-    String? photoUrl,
-    String? location,
-  }) async {
-    final currentUser = _auth.currentUser;
-    if (currentUser == null) return;
-
-    await _firestore.collection('users').doc(currentUser.uid).set({
-      'uid': currentUser.uid,
-      'displayName': displayName,
-      'email': currentUser.email,
-      'photoUrl': photoUrl,
-      'location': location,
-      'lastSeen': FieldValue.serverTimestamp(),
-      'isOnline': true,
-      'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-  }
-
-  /// Set user online status
-  Future<void> setUserOnlineStatus(bool isOnline) async {
-    final currentUser = _auth.currentUser;
-    if (currentUser == null) return;
-
-    await _firestore.collection('users').doc(currentUser.uid).update({
-      'isOnline': isOnline,
-      'lastSeen': FieldValue.serverTimestamp(),
-    });
-  }
 }
 
-/// Chat message model for Firestore
+/// Chat message model
 class ChatMessage {
   final String id;
   final String senderId;
   final String senderName;
   final String content;
-  final DateTime? timestamp;
+  final DateTime timestamp;
   final bool isRead;
   final String type;
   final String? medicineInfo;
@@ -204,7 +190,7 @@ class ChatMessage {
     required this.senderId,
     required this.senderName,
     required this.content,
-    this.timestamp,
+    required this.timestamp,
     this.isRead = false,
     this.type = 'text',
     this.medicineInfo,
@@ -216,21 +202,20 @@ class ChatMessage {
       senderId: data['senderId'] ?? '',
       senderName: data['senderName'] ?? 'Unknown',
       content: data['content'] ?? '',
-      timestamp: data['timestamp'] != null 
-          ? (data['timestamp'] as Timestamp).toDate()
-          : null,
+      timestamp: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
       isRead: data['isRead'] ?? false,
       type: data['type'] ?? 'text',
       medicineInfo: data['medicineInfo'],
     );
   }
 
-  Map<String, dynamic> toFirestore() {
+  Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'senderId': senderId,
       'senderName': senderName,
       'content': content,
-      'timestamp': timestamp != null ? Timestamp.fromDate(timestamp!) : null,
+      'timestamp': Timestamp.fromDate(timestamp),
       'isRead': isRead,
       'type': type,
       if (medicineInfo != null) 'medicineInfo': medicineInfo,
@@ -238,14 +223,14 @@ class ChatMessage {
   }
 }
 
-/// Chat conversation model for Firestore
+/// Chat conversation model
 class ChatConversation {
   final String id;
   final List<String> participants;
   final Map<String, String> participantNames;
   final String lastMessage;
   final DateTime? lastMessageTime;
-  final DateTime? createdAt;
+  final bool isGroup;
 
   ChatConversation({
     required this.id,
@@ -253,7 +238,7 @@ class ChatConversation {
     required this.participantNames,
     required this.lastMessage,
     this.lastMessageTime,
-    this.createdAt,
+    this.isGroup = false,
   });
 
   factory ChatConversation.fromFirestore(Map<String, dynamic> data, String id) {
@@ -262,32 +247,26 @@ class ChatConversation {
       participants: List<String>.from(data['participants'] ?? []),
       participantNames: Map<String, String>.from(data['participantNames'] ?? {}),
       lastMessage: data['lastMessage'] ?? '',
-      lastMessageTime: data['lastMessageTime'] != null
-          ? (data['lastMessageTime'] as Timestamp).toDate()
-          : null,
-      createdAt: data['createdAt'] != null
-          ? (data['createdAt'] as Timestamp).toDate()
-          : null,
+      lastMessageTime: (data['lastMessageTime'] as Timestamp?)?.toDate(),
+      isGroup: data['isGroup'] ?? false,
     );
   }
 
-  /// Get the other participant's name (not current user)
   String getOtherParticipantName(String currentUserId) {
-    final otherUserId = participants.firstWhere(
+    final otherParticipant = participants.firstWhere(
       (id) => id != currentUserId,
       orElse: () => '',
     );
-    return participantNames[otherUserId] ?? 'Unknown User';
+    return participantNames[otherParticipant] ?? 'Unknown User';
   }
 }
 
-/// User profile model for Firestore
+/// User profile model
 class UserProfile {
   final String uid;
   final String displayName;
   final String? email;
   final String? photoUrl;
-  final String? location;
   final bool isOnline;
   final DateTime? lastSeen;
 
@@ -296,7 +275,6 @@ class UserProfile {
     required this.displayName,
     this.email,
     this.photoUrl,
-    this.location,
     this.isOnline = false,
     this.lastSeen,
   });
@@ -304,14 +282,11 @@ class UserProfile {
   factory UserProfile.fromFirestore(Map<String, dynamic> data, String id) {
     return UserProfile(
       uid: id,
-      displayName: data['displayName'] ?? 'Unknown',
+      displayName: data['displayName'] ?? 'Unknown User',
       email: data['email'],
       photoUrl: data['photoUrl'],
-      location: data['location'],
       isOnline: data['isOnline'] ?? false,
-      lastSeen: data['lastSeen'] != null
-          ? (data['lastSeen'] as Timestamp).toDate()
-          : null,
+      lastSeen: (data['lastSeen'] as Timestamp?)?.toDate(),
     );
   }
 }

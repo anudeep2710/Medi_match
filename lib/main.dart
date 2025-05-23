@@ -112,13 +112,7 @@ class MyApp extends StatelessWidget {
             theme: ThemeData(
               colorScheme: ColorScheme.fromSeed(
                 seedColor: Colors.teal,
-                brightness:
-                    settingsProvider.darkMode
-                        ? Brightness.dark
-                        : Brightness.light,
-                primary: Colors.teal,
-                secondary: Colors.tealAccent,
-                tertiary: Colors.amber,
+                brightness: Brightness.light,
               ),
               useMaterial3: true,
               cardTheme: const CardThemeData(
@@ -128,11 +122,8 @@ class MyApp extends StatelessWidget {
                   borderRadius: BorderRadius.all(Radius.circular(16)),
                 ),
               ),
-              appBarTheme: AppBarTheme(
-                backgroundColor:
-                    settingsProvider.darkMode
-                        ? Colors.teal.shade800
-                        : Colors.teal,
+              appBarTheme: const AppBarTheme(
+                backgroundColor: Colors.teal,
                 foregroundColor: Colors.white,
                 elevation: 0,
                 centerTitle: true,
@@ -150,12 +141,63 @@ class MyApp extends StatelessWidget {
                   ),
                 ),
               ),
+              bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+                elevation: 0,
+                type: BottomNavigationBarType.fixed,
+              ),
               textTheme: const TextTheme(
                 headlineMedium: TextStyle(fontWeight: FontWeight.bold),
                 titleLarge: TextStyle(fontWeight: FontWeight.bold),
                 titleMedium: TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
+            darkTheme: ThemeData(
+              colorScheme: ColorScheme.fromSeed(
+                seedColor: Colors.teal,
+                brightness: Brightness.dark,
+              ),
+              useMaterial3: true,
+              cardTheme: CardThemeData(
+                elevation: 4,
+                margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(16)),
+                ),
+                color: Colors.grey.shade900,
+              ),
+              appBarTheme: AppBarTheme(
+                backgroundColor: Colors.teal.shade800,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                centerTitle: true,
+              ),
+              elevatedButtonTheme: ElevatedButtonThemeData(
+                style: ElevatedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor: Colors.teal,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+              bottomNavigationBarTheme: BottomNavigationBarThemeData(
+                backgroundColor: Colors.grey.shade900,
+                elevation: 0,
+                type: BottomNavigationBarType.fixed,
+                selectedItemColor: Colors.teal,
+                unselectedItemColor: Colors.grey.shade400,
+              ),
+              textTheme: const TextTheme(
+                headlineMedium: TextStyle(fontWeight: FontWeight.bold),
+                titleLarge: TextStyle(fontWeight: FontWeight.bold),
+                titleMedium: TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+            themeMode: settingsProvider.darkMode ? ThemeMode.dark : ThemeMode.light,
             localizationsDelegates: const [
               GlobalMaterialLocalizations.delegate,
               GlobalWidgetsLocalizations.delegate,

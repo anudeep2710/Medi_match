@@ -25,11 +25,19 @@ class _ChatListScreenState extends State<ChatListScreen> {
     // Ensure user is authenticated and profile is updated
     final user = _auth.currentUser;
     if (user != null) {
-      await _chatService.updateUserProfile(
-        displayName: user.displayName ?? 'Anonymous User',
-        photoUrl: user.photoURL,
-      );
-      await _chatService.setUserOnlineStatus(true);
+      print('🔐 User authenticated: ${user.uid} - ${user.email}');
+      try {
+        await _chatService.updateUserProfile(
+          displayName: user.displayName ?? user.email?.split('@')[0] ?? 'Anonymous User',
+          photoUrl: user.photoURL,
+        );
+        await _chatService.setUserOnlineStatus(true);
+        print('✅ User profile updated successfully');
+      } catch (e) {
+        print('❌ Error updating user profile: $e');
+      }
+    } else {
+      print('❌ No user authenticated');
     }
   }
 

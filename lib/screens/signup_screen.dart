@@ -5,7 +5,6 @@ import 'package:medimatch/providers/auth_provider.dart';
 import 'package:medimatch/screens/home_screen.dart';
 import 'package:medimatch/screens/login_screen.dart';
 import 'package:medimatch/utils/firebase_test.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -32,80 +31,7 @@ class _SignupScreenState extends State<SignupScreen> {
     super.dispose();
   }
 
-  void _showSetupInstructionsDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Firebase Setup Required'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'The authentication is not working because Firebase has not been properly configured.',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text('To set up Firebase authentication:'),
-                  const SizedBox(height: 8),
-                  const Text(
-                    '1. Create a Firebase project in the Firebase Console',
-                  ),
-                  const Text('2. Register your Android and iOS apps'),
-                  const Text(
-                    '3. Download the configuration files (google-services.json and GoogleService-Info.plist)',
-                  ),
-                  const Text(
-                    '4. Replace the placeholder files with the real ones',
-                  ),
-                  const Text(
-                    '5. Enable Email/Password authentication in the Firebase Console',
-                  ),
-                  const SizedBox(height: 16),
-                  InkWell(
-                    onTap: () async {
-                      final Uri url = Uri.parse(
-                        'https://console.firebase.google.com/',
-                      );
-                      try {
-                        await launchUrl(url);
-                      } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Could not open URL: $e')),
-                          );
-                        }
-                      }
-                    },
-                    child: const Text(
-                      'Open Firebase Console',
-                      style: TextStyle(
-                        color: Colors.blue,
-                        decoration: TextDecoration.underline,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Please refer to the README_FIREBASE_AUTH.md file for detailed instructions.',
-                    style: TextStyle(fontStyle: FontStyle.italic),
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-    );
-  }
+
 
   @override
   Widget build(BuildContext context) {

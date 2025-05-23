@@ -16,6 +16,10 @@
       "oauth_client": [
         {
           "client_id": "811543386253-1f4lu6pfquc9694br3vvpenvaj9ei715.apps.googleusercontent.com",
+          "client_type": 1
+        },
+        {
+          "client_id": "811543386253-1f4lu6pfquc9694br3vvpenvaj9ei715.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
@@ -32,6 +36,9 @@
               "client_type": 3
             }
           ]
+        },
+        "analytics_service": {
+          "status": 1
         }
       }
     }

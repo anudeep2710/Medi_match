@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:http/http.dart' as http;
 import 'package:medimatch/models/prescription.dart';
 import 'package:medimatch/providers/prescription_provider.dart';
 import 'package:medimatch/providers/auth_provider.dart';
@@ -14,7 +16,7 @@ import 'package:medimatch/screens/chat/chat_list_screen.dart';
 import 'package:medimatch/screens/medication_analysis_screen.dart';
 import 'package:medimatch/screens/login_screen.dart';
 import 'package:medimatch/screens/profile_screen.dart';
-import 'package:medimatch/screens/firebase_test_screen.dart';
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -108,9 +110,9 @@ class _HomeScreenState extends State<HomeScreen> {
             currentIndex: _selectedIndex,
             onTap: _onItemTapped,
             type: BottomNavigationBarType.fixed,
-            backgroundColor: Colors.white.withOpacity(0.9),
+            backgroundColor: Theme.of(context).colorScheme.surface,
             selectedItemColor: Theme.of(context).colorScheme.primary,
-            unselectedItemColor: Colors.grey.shade600,
+            unselectedItemColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
             elevation: 0,
             items: const [
               BottomNavigationBarItem(
@@ -133,14 +135,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: Icon(Icons.local_pharmacy_rounded),
                 label: 'Pharmacy',
               ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.volunteer_activism),
-                label: 'Donate',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.chat),
-                label: 'Chat',
-              ),
             ],
           ),
         ),
@@ -160,10 +154,6 @@ class _HomeScreenState extends State<HomeScreen> {
         return _buildRemindersTab();
       case 4:
         return _buildPharmacyTab();
-      case 5:
-        return _buildDonateTab();
-      case 6:
-        return _buildChatTab();
       default:
         return _buildHomeTab();
     }
@@ -289,7 +279,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       );
                     },
                   },
-
                   {
                     'icon': Icons.analytics_rounded,
                     'title': 'Medicine Analysis',
@@ -305,10 +294,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   },
                   {
                     'icon': Icons.health_and_safety_rounded,
-                    'title': 'Health Tips',
+                    'title': 'AI Health Tips',
                     'color': Colors.green,
                     'onTap': () {
-                      _showHealthTipsDialog();
+                      _generateHealthTips();
                     },
                   },
                   {
@@ -495,7 +484,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
+                    color: color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(icon, size: 24, color: color),
@@ -521,22 +510,102 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showHealthTipsDialog() {
+  Future<void> _generateHealthTips() async {
+    final prescriptionProvider = Provider.of<PrescriptionProvider>(context, listen: false);
+    final prescriptions = prescriptionProvider.prescriptions;
+
+    if (prescriptions.isEmpty) {
+      _showNoMedicationsDialog();
+      return;
+    }
+
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(
+              'Generating AI Health Tips...',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Please wait while we analyze your medications',
+              style: TextStyle(
+                fontSize: 14,
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      // Get the latest prescription
+      final latestPrescription = prescriptions.first;
+      final medicines = latestPrescription.medicines;
+      final medicineNames = medicines.map((m) => m.name).join(', ');
+
+      // Create a comprehensive prompt for health tips
+      final prompt = '''
+Generate comprehensive health tips for a patient taking these medications: $medicineNames
+
+Please provide detailed advice in the following categories:
+1. General Health Advice - Overall wellness tips while on these medications
+2. Dietary Considerations - Foods to eat, avoid, and timing with medications
+3. Lifestyle Recommendations - Exercise, sleep, and daily routine adjustments
+4. Side Effects Monitoring - What to watch for and when to be concerned
+5. Doctor Consultation Guidance - When to contact healthcare providers
+6. Medication Adherence Tips - How to stay consistent with the medication routine
+
+Format the response in a clear, organized manner with practical, actionable advice.
+Use emojis to make it more engaging and easy to read.
+''';
+
+      // Call the Gemini API
+      final response = await http.post(
+        Uri.parse('https://us-central1-said-eb2f5.cloudfunctions.net/gemini_medical_assistant'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'prompt': prompt}),
+      );
+
+      Navigator.pop(context); // Close loading dialog
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final healthTips = data['response'] ?? 'No health tips available';
+        _showHealthTipsResult(healthTips, medicineNames);
+      } else {
+        _showHealthTipsError('Failed to generate health tips. Please try again.');
+      }
+    } catch (e) {
+      Navigator.pop(context); // Close loading dialog
+      _showHealthTipsError('Error generating health tips: $e');
+    }
+  }
+
+  void _showNoMedicationsDialog() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            Icon(
-              Icons.health_and_safety_rounded,
-              color: Colors.green,
-              size: 28,
-            ),
+            Icon(Icons.health_and_safety_rounded, color: Colors.orange, size: 28),
             const SizedBox(width: 12),
-            const Text('Health Tips'),
+            const Text('No Medications Found'),
           ],
         ),
         content: Column(
@@ -544,26 +613,20 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'To get personalized health tips based on your medications:',
+              'To get personalized AI health tips, you need to scan a prescription first.',
               style: TextStyle(fontSize: 16),
             ),
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.1),
+                color: Colors.blue.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Colors.blue.withOpacity(0.3),
-                ),
+                border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
               ),
               child: Row(
                 children: [
-                  Icon(
-                    Icons.document_scanner_rounded,
-                    color: Colors.blue,
-                    size: 24,
-                  ),
+                  Icon(Icons.document_scanner_rounded, color: Colors.blue, size: 24),
                   const SizedBox(width: 12),
                   const Expanded(
                     child: Text(
@@ -579,7 +642,7 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Got it'),
+            child: const Text('Later'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -589,6 +652,103 @@ class _HomeScreenState extends State<HomeScreen> {
               });
             },
             child: const Text('Scan Now'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showHealthTipsResult(String healthTips, String medications) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(Icons.health_and_safety_rounded, color: Colors.green, size: 28),
+            const SizedBox(width: 12),
+            const Text('AI Health Tips'),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.medication_rounded,
+                           color: Theme.of(context).colorScheme.primary, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'For: $medications',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  healthTips,
+                  style: const TextStyle(fontSize: 14, height: 1.5),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Navigate to medication analysis for more details
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const MedicationAnalysisScreen(),
+                ),
+              );
+            },
+            child: const Text('View Analysis'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showHealthTipsError(String error) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(Icons.error_outline, color: Colors.red, size: 28),
+            const SizedBox(width: 12),
+            const Text('Error'),
+          ],
+        ),
+        content: Text(error),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
           ),
         ],
       ),
@@ -806,13 +966,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return const PharmacyScreen();
   }
 
-  Widget _buildDonateTab() {
-    return const MedicationDonationListScreen();
-  }
 
-  Widget _buildChatTab() {
-    return const ChatListScreen();
-  }
 
 
 

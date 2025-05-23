@@ -69,7 +69,13 @@ class MedicationDonationDetailScreen extends StatelessWidget {
             // Donor information
             Row(
               children: [
-                CircleAvatar(child: Text(donation.donorName[0].toUpperCase())),
+                CircleAvatar(
+                  child: Text(
+                    donation.donorName.isNotEmpty
+                      ? donation.donorName[0].toUpperCase()
+                      : 'U',
+                  ),
+                ),
                 const SizedBox(width: 8),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

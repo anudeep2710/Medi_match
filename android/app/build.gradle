@@ -30,17 +30,17 @@ if (flutterVersionName == null) {
 
 android {
     namespace "com.health.medimatch"
-    compileSdkVersion flutter.compileSdkVersion
+    compileSdk 35
     ndkVersion "27.0.12077973"
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
         coreLibraryDesugaringEnabled true
     }
 
     kotlinOptions {
-        jvmTarget = '1.8'
+        jvmTarget = '11'
     }
 
     sourceSets {
@@ -50,14 +50,23 @@ android {
     defaultConfig {
         applicationId "com.health.medimatch"
         minSdkVersion 26  // Required for tflite_flutter
-        targetSdkVersion flutter.targetSdkVersion
+        targetSdkVersion 35
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
+
+        // Resource configuration to handle compatibility issues
+        resourceConfigurations += ['en', 'xxhdpi']
     }
 
     buildTypes {
         release {
             signingConfig signingConfigs.debug
+            minifyEnabled false  // Temporarily disabled to fix build
+            shrinkResources false
+            // proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            minifyEnabled false
         }
     }
 }
