@@ -22,6 +22,7 @@ import 'package:medimatch/providers/pharmacy_provider.dart';
 import 'package:medimatch/providers/translation_provider.dart';
 import 'package:medimatch/providers/medical_assistant_provider.dart';
 import 'package:medimatch/providers/auth_provider.dart';
+import 'package:medimatch/providers/meditation_provider.dart';
 
 // Screens
 import 'package:medimatch/screens/home_screen.dart';
@@ -103,6 +104,7 @@ class MyApp extends StatelessWidget {
           create: (_) => MedicalAssistantProvider(medicalAssistantApiService),
         ),
         ChangeNotifierProvider(create: (_) => AuthProvider(firebaseService)),
+        ChangeNotifierProvider(create: (_) => MeditationProvider(hiveService)),
       ],
       child: Consumer2<SettingsProvider, AuthProvider>(
         builder: (context, settingsProvider, authProvider, _) {

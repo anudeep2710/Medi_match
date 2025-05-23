@@ -11,9 +11,9 @@ class FirebaseService {
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    // Note: You need to replace this with your actual OAuth client ID from Firebase Console
-    // The client ID should look like: '123456789012-abcdefghijklmnopqrstuvwxyz.apps.googleusercontent.com'
-    // clientId: kIsWeb ? 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com' : null,
+    // Web OAuth client ID - this needs to be configured in Firebase Console
+    // For now, we'll let it auto-configure from Firebase, but you may need to set this explicitly
+    clientId: kIsWeb ? '811543386253-3dbae7c2a9913d44f7aac4.apps.googleusercontent.com' : null,
     scopes: ['email', 'profile'],
   );
 

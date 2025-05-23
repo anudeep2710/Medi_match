@@ -11,6 +11,7 @@ import 'package:medimatch/screens/pharmacy_screen.dart';
 import 'package:medimatch/screens/settings_screen.dart';
 import 'package:medimatch/screens/donation/medication_donation_list_screen.dart';
 import 'package:medimatch/screens/chat/chat_list_screen.dart';
+import 'package:medimatch/screens/meditation/meditation_screen.dart';
 import 'package:medimatch/screens/login_screen.dart';
 import 'package:medimatch/screens/profile_screen.dart';
 
@@ -102,6 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Donate',
           ),
           BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'Chat'),
+          BottomNavigationBarItem(icon: Icon(Icons.self_improvement), label: 'Meditation'),
         ],
       ),
     );
@@ -123,6 +125,8 @@ class _HomeScreenState extends State<HomeScreen> {
         return _buildDonationTab();
       case 6:
         return _buildChatTab();
+      case 7:
+        return _buildMeditationTab();
       default:
         return _buildHomeTab();
     }
@@ -602,6 +606,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildChatTab() {
     return const ChatListScreen();
+  }
+
+  Widget _buildMeditationTab() {
+    return const MeditationScreen();
   }
 
   void _onItemTapped(int index) {
