@@ -117,17 +117,31 @@ class FirebaseChatService {
       return Stream.value([]);
     }
 
-    return _firestore
-        .collection('conversations')
-        .where('participants', arrayContains: currentUser.uid)
-        .orderBy('lastMessageTime', descending: true)
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        return ChatConversation.fromFirestore(data, doc.id);
-      }).toList();
-    });
+    try {
+      return _firestore
+          .collection('conversations')
+          .where('participants', arrayContains: currentUser.uid)
+          .snapshots()
+          .map((snapshot) {
+        final conversations = snapshot.docs.map((doc) {
+          final data = doc.data();
+          return ChatConversation.fromFirestore(data, doc.id);
+        }).toList();
+
+        // Sort manually to avoid index requirement
+        conversations.sort((a, b) {
+          if (a.lastMessageTime == null && b.lastMessageTime == null) return 0;
+          if (a.lastMessageTime == null) return 1;
+          if (b.lastMessageTime == null) return -1;
+          return b.lastMessageTime!.compareTo(a.lastMessageTime!);
+        });
+
+        return conversations;
+      });
+    } catch (e) {
+      print('❌ Error getting conversations: $e');
+      return Stream.value([]);
+    }
   }
 
   /// Update user profile

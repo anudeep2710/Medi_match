@@ -1,21 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:medimatch/services/firebase_donation_service.dart' as firebase_donation;
 import 'package:medimatch/screens/donation/firebase_donation_detail_screen.dart';
-import 'package:medimatch/screens/donation/add_donation_screen.dart';
+import 'package:medimatch/screens/donation/expiry_verification_screen.dart';
+import 'package:medimatch/utils/responsive_helper.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:medimatch/services/firebase_chat_service.dart' as firebase_chat;
 import 'package:medimatch/screens/chat/chat_screen.dart';
 
 class MedicationDonationListScreen extends StatefulWidget {
-  const MedicationDonationListScreen({Key? key}) : super(key: key);
+  const MedicationDonationListScreen({super.key});
 
   @override
-  State<MedicationDonationListScreen> createState() =>
-      _MedicationDonationListScreenState();
+  State<MedicationDonationListScreen> createState() => _MedicationDonationListScreenState();
 }
 
-class _MedicationDonationListScreenState
-    extends State<MedicationDonationListScreen> {
+class _MedicationDonationListScreenState extends State<MedicationDonationListScreen> {
   final firebase_donation.FirebaseDonationService _donationService = firebase_donation.FirebaseDonationService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final firebase_chat.FirebaseChatService _chatService = firebase_chat.FirebaseChatService();
@@ -60,50 +59,32 @@ class _MedicationDonationListScreenState
     });
   }
 
-  // Sample donation creation removed - only real-time donations from users
-
   Future<void> _quickChat(firebase_donation.MedicationDonation donation) async {
     final currentUser = _auth.currentUser;
     if (currentUser == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please log in to start a chat'),
-          backgroundColor: Colors.red,
-        ),
+        const SnackBar(content: Text('Please log in to start a chat'), backgroundColor: Colors.red),
       );
       return;
     }
 
     if (currentUser.uid == donation.donorId) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('You cannot chat with yourself'),
-          backgroundColor: Colors.orange,
-        ),
+        const SnackBar(content: Text('You cannot chat with yourself'), backgroundColor: Colors.orange),
       );
       return;
     }
 
     try {
-      // Show loading
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(),
-        ),
+        builder: (context) => const Center(child: CircularProgressIndicator()),
       );
 
-      // Create or get existing conversation
-      final conversationId = await _chatService.createConversation(
-        donation.donorId,
-        donation.donorName,
-      );
-
-      // Close loading dialog
+      final conversationId = await _chatService.createConversation(donation.donorId, donation.donorName);
       if (mounted) Navigator.pop(context);
 
-      // Navigate to chat screen
       if (mounted) {
         Navigator.push(
           context,
@@ -118,34 +99,12 @@ class _MedicationDonationListScreenState
         );
       }
     } catch (e) {
-      // Close loading dialog if still open
       if (mounted) Navigator.pop(context);
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Error starting chat: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('❌ Error starting chat: $e'), backgroundColor: Colors.red),
         );
       }
-    }
-  }
-
-  // Old sample data removed - now using Firebase real-time data
-
-  String _formatTimeAgo(DateTime dateTime) {
-    final now = DateTime.now();
-    final difference = now.difference(dateTime);
-
-    if (difference.inDays > 0) {
-      return '${difference.inDays}d ago';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours}h ago';
-    } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes}m ago';
-    } else {
-      return 'Just now';
     }
   }
 
@@ -155,32 +114,40 @@ class _MedicationDonationListScreenState
 
   @override
   Widget build(BuildContext context) {
+    final isTabletOrDesktop = ResponsiveHelper.isTablet(context) || ResponsiveHelper.isDesktop(context);
+    final responsivePadding = ResponsiveHelper.getResponsivePadding(context);
+    
     return Scaffold(
       appBar: AppBar(
-        title: Text(_showMyDonations ? 'My Donations' : 'Medicine Donations'),
+        title: Text(
+          _showMyDonations ? 'My Donations' : 'Medicine Donations',
+          style: TextStyle(fontSize: ResponsiveHelper.getResponsiveFontSize(context, 20)),
+        ),
         backgroundColor: Colors.teal,
         foregroundColor: Colors.white,
+        toolbarHeight: ResponsiveHelper.getResponsiveAppBarHeight(context),
         actions: [
           IconButton(
             icon: Icon(_showMyDonations ? Icons.public : Icons.person),
             onPressed: _toggleDonationView,
             tooltip: _showMyDonations ? 'View All Donations' : 'View My Donations',
+            iconSize: ResponsiveHelper.getResponsiveIconSize(context, 24),
           ),
-          // Sample donations button removed - only real-time donations
         ],
       ),
       body: Column(
         children: [
           // Search bar
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: responsivePadding,
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
                 hintText: 'Search medicines...',
-                prefixIcon: const Icon(Icons.search),
+                hintStyle: TextStyle(fontSize: ResponsiveHelper.getResponsiveFontSize(context, 14)),
+                prefixIcon: Icon(Icons.search, size: ResponsiveHelper.getResponsiveIconSize(context, 20)),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(ResponsiveHelper.getResponsiveBorderRadius(context)),
                 ),
                 filled: true,
                 fillColor: Colors.grey.shade100,
@@ -188,33 +155,7 @@ class _MedicationDonationListScreenState
               onChanged: _onSearchChanged,
             ),
           ),
-          // Filter chips
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Row(
-              children: [
-                FilterChip(
-                  label: const Text('All Donations'),
-                  selected: !_showMyDonations,
-                  onSelected: (selected) {
-                    if (selected && _showMyDonations) {
-                      _toggleDonationView();
-                    }
-                  },
-                ),
-                const SizedBox(width: 8),
-                FilterChip(
-                  label: const Text('My Donations'),
-                  selected: _showMyDonations,
-                  onSelected: (selected) {
-                    if (selected && !_showMyDonations) {
-                      _toggleDonationView();
-                    }
-                  },
-                ),
-              ],
-            ),
-          ),
+          
           // Donations list
           Expanded(
             child: _donationsStream == null
@@ -245,8 +186,6 @@ class _MedicationDonationListScreenState
                       }
 
                       final donations = snapshot.data ?? [];
-
-                      // Filter donations based on search query
                       final filteredDonations = _searchQuery.isEmpty
                           ? donations
                           : donations.where((donation) =>
@@ -265,66 +204,57 @@ class _MedicationDonationListScreenState
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          // Navigate to add donation screen
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (context) => const AddDonationScreen(),
-            ),
+            MaterialPageRoute(builder: (context) => const ExpiryVerificationScreen()),
           );
-          // No need to manually add - Firebase real-time updates will handle this
         },
-        child: const Icon(Icons.add),
+        icon: Icon(Icons.verified_user, size: ResponsiveHelper.getResponsiveIconSize(context, 20)),
+        label: Text('Add Donation', style: TextStyle(fontSize: ResponsiveHelper.getResponsiveFontSize(context, 14))),
+        backgroundColor: Colors.teal,
+        foregroundColor: Colors.white,
       ),
     );
   }
 
   Widget _buildEmptyState() {
+    final responsiveSpacing = ResponsiveHelper.getResponsiveSpacing(context, 24);
+    
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
-            Icons.medication_outlined,
-            size: 80,
-            color: Colors.grey,
+          Icon(
+            Icons.medical_services_outlined,
+            size: ResponsiveHelper.getResponsiveIconSize(context, 64),
+            color: Colors.grey.shade400,
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: responsiveSpacing),
           Text(
             _showMyDonations ? 'No donations yet' : 'No donations available',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+            style: TextStyle(
+              fontSize: ResponsiveHelper.getResponsiveFontSize(context, 18),
+              fontWeight: FontWeight.w500,
+              color: Colors.grey.shade600,
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            _showMyDonations
-              ? 'Create your first donation to help others'
-              : 'Check back later for new donations from the community',
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.grey),
-          ),
-          const SizedBox(height: 24),
+          SizedBox(height: responsiveSpacing),
           ElevatedButton.icon(
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => const AddDonationScreen(),
-                ),
-              ).then((newDonation) {
-                if (newDonation != null) {
-                  setState(() {
-                    // Firebase real-time updates handle this automatically
-                  });
-                }
-              });
+                MaterialPageRoute(builder: (context) => const ExpiryVerificationScreen()),
+              );
             },
             icon: const Icon(Icons.add),
             label: const Text('Donate Medication'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.teal,
+              foregroundColor: Colors.white,
+              minimumSize: Size(0, ResponsiveHelper.getResponsiveButtonHeight(context)),
+            ),
           ),
         ],
       ),
@@ -332,260 +262,143 @@ class _MedicationDonationListScreenState
   }
 
   Widget _buildDonationsList(List<firebase_donation.MedicationDonation> donations) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16.0),
-      itemCount: donations.length,
-      itemBuilder: (context, index) {
-        final donation = donations[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 16.0),
-          child: InkWell(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => FirebaseDonationDetailScreen(
-                    donation: donation,
-                  ),
-                ),
-              );
-            },
+    final isTabletOrDesktop = ResponsiveHelper.isTablet(context) || ResponsiveHelper.isDesktop(context);
+    final responsivePadding = ResponsiveHelper.getResponsivePadding(context);
+
+    if (isTabletOrDesktop) {
+      final crossAxisCount = ResponsiveHelper.getResponsiveCrossAxisCount(context, mobile: 1, tablet: 2, desktop: 3);
+      return Padding(
+        padding: responsivePadding,
+        child: GridView.builder(
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            childAspectRatio: 0.75,
+            crossAxisSpacing: ResponsiveHelper.getResponsiveSpacing(context, 16),
+            mainAxisSpacing: ResponsiveHelper.getResponsiveSpacing(context, 16),
+          ),
+          itemCount: donations.length,
+          itemBuilder: (context, index) => _buildDonationCard(donations[index]),
+        ),
+      );
+    } else {
+      return ListView.builder(
+        padding: responsivePadding,
+        itemCount: donations.length,
+        itemBuilder: (context, index) => _buildDonationCard(donations[index]),
+      );
+    }
+  }
+
+  Widget _buildDonationCard(firebase_donation.MedicationDonation donation) {
+    final responsiveMargin = ResponsiveHelper.getResponsiveMargin(context);
+    final responsiveBorderRadius = ResponsiveHelper.getResponsiveBorderRadius(context);
+    final responsiveElevation = ResponsiveHelper.getResponsiveElevation(context);
+    final responsivePadding = ResponsiveHelper.getResponsivePadding(context);
+    final responsiveSpacing = ResponsiveHelper.getResponsiveSpacing(context, 12);
+    final isTabletOrDesktop = ResponsiveHelper.isTablet(context) || ResponsiveHelper.isDesktop(context);
+    
+    return Container(
+      margin: isTabletOrDesktop ? EdgeInsets.zero : EdgeInsets.only(bottom: responsiveMargin.bottom),
+      child: Card(
+        elevation: responsiveElevation,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(responsiveBorderRadius)),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(responsiveBorderRadius),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => FirebaseDonationDetailScreen(donation: donation)),
+            );
+          },
+          child: Padding(
+            padding: responsivePadding,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Medication image
-                // Medication image placeholder (no external images)
-                Container(
-                  height: 120,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.teal.shade50,
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(4.0),
-                    ),
+                Text(
+                  donation.medicine.name,
+                  style: TextStyle(
+                    fontSize: ResponsiveHelper.getResponsiveFontSize(context, 18),
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
                   ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.medical_services,
-                        size: 40,
-                        color: Colors.teal.shade400,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        donation.medicine.name.isNotEmpty
-                          ? donation.medicine.name
-                          : 'Unknown Medicine',
-                        style: TextStyle(
-                          color: Colors.teal.shade700,
-                          fontWeight: FontWeight.w500,
-                          fontSize: 12,
-                        ),
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                SizedBox(height: responsiveSpacing),
+                Text(
+                  donation.medicine.dosage,
+                  style: TextStyle(
+                    fontSize: ResponsiveHelper.getResponsiveFontSize(context, 14),
+                    color: Colors.grey.shade700,
                   ),
                 ),
-
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        donation.medicine.name,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        donation.medicine.dosage,
+                SizedBox(height: responsiveSpacing),
+                Row(
+                  children: [
+                    Icon(Icons.location_on, size: ResponsiveHelper.getResponsiveIconSize(context, 16), color: Colors.grey),
+                    SizedBox(width: responsiveSpacing * 0.5),
+                    Expanded(
+                      child: Text(
+                        donation.location,
                         style: TextStyle(
-                          color: Colors.grey.shade700,
+                          fontSize: ResponsiveHelper.getResponsiveFontSize(context, 12),
+                          color: Colors.grey.shade600,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.location_on,
-                            size: 16,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            donation.distance ?? 'Unknown distance',
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                          ),
-                          const Spacer(),
-                          Text(
-                            'Qty: ${donation.quantity}${donation.unit != null ? ' ${donation.unit}' : ''}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 12,
-                            child: Text(
-                              donation.donorName.isNotEmpty
-                                ? donation.donorName[0].toUpperCase()
-                                : 'U',
-                              style: const TextStyle(fontSize: 10),
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  donation.donorName,
-                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                                ),
-                                if (donation.donorEmail != null)
-                                  Text(
-                                    donation.donorEmail!,
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: Colors.teal.shade600,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                          // Quick Chat Button (only for other users' donations)
-                          if (_auth.currentUser?.uid != donation.donorId && donation.isAvailable) ...[
-                            IconButton(
-                              onPressed: () => _quickChat(donation),
-                              icon: const Icon(Icons.chat_bubble_outline),
-                              iconSize: 18,
-                              color: Colors.teal,
-                              tooltip: 'Quick Chat',
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                            ),
-                          ],
-                          Text(
-                            'Expires: ${_formatDate(donation.expiryDate)}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade600,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      // Availability status
-                      Row(
-                        children: [
-                          const Spacer(),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: donation.isAvailable
-                                ? Colors.green.shade100
-                                : Colors.red.shade100,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              donation.isAvailable ? 'Available' : 'Unavailable',
-                              style: TextStyle(
-                                color: donation.isAvailable
-                                  ? Colors.green.shade800
-                                  : Colors.red.shade800,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ],
+                    ),
+                    if (_auth.currentUser?.uid != donation.donorId && donation.isAvailable) ...[
+                      IconButton(
+                        onPressed: () => _quickChat(donation),
+                        icon: Icon(
+                          Icons.chat_bubble_outline,
+                          size: ResponsiveHelper.getResponsiveIconSize(context, 20),
+                        ),
+                        color: Colors.teal,
+                        tooltip: 'Chat',
                       ),
                     ],
-                  ),
+                  ],
+                ),
+                SizedBox(height: responsiveSpacing),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Expires: ${_formatDate(donation.expiryDate)}',
+                        style: TextStyle(
+                          fontSize: ResponsiveHelper.getResponsiveFontSize(context, 12),
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: responsiveSpacing,
+                        vertical: responsiveSpacing * 0.5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: donation.isAvailable ? Colors.green.shade100 : Colors.red.shade100,
+                        borderRadius: BorderRadius.circular(responsiveBorderRadius),
+                      ),
+                      child: Text(
+                        donation.isAvailable ? 'Available' : 'Unavailable',
+                        style: TextStyle(
+                          color: donation.isAvailable ? Colors.green.shade800 : Colors.red.shade800,
+                          fontSize: ResponsiveHelper.getResponsiveFontSize(context, 10),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-        );
-      },
-    );
-  }
-
-  // Duplicate _formatDate method removed
-
-  void _showFilterOptions(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Text(
-                  'Filter Donations',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.location_on),
-                title: const Text('Nearest to me'),
-                onTap: () {
-                  Navigator.pop(context);
-                  // Sort by distance
-                  // TODO: Implement distance sorting with Firebase
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Distance sorting coming soon!')),
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.access_time),
-                title: const Text('Most recent'),
-                onTap: () {
-                  Navigator.pop(context);
-                  // Sort by posted date
-                  // Firebase already sorts by posted date
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Already sorted by most recent!')),
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.calendar_today),
-                title: const Text('Expiring soon'),
-                onTap: () {
-                  Navigator.pop(context);
-                  // Sort by expiry date
-                  // TODO: Implement expiry date sorting with Firebase
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Expiry sorting coming soon!')),
-                  );
-                },
-              ),
-            ],
-          ),
-        );
-      },
+        ),
+      ),
     );
   }
 }

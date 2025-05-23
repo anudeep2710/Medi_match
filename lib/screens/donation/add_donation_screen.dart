@@ -5,7 +5,12 @@ import 'package:medimatch/services/firebase_donation_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class AddDonationScreen extends StatefulWidget {
-  const AddDonationScreen({Key? key}) : super(key: key);
+  final Map<String, dynamic>? prefilledData;
+
+  const AddDonationScreen({
+    Key? key,
+    this.prefilledData,
+  }) : super(key: key);
 
   @override
   State<AddDonationScreen> createState() => _AddDonationScreenState();
@@ -36,6 +41,48 @@ class _AddDonationScreenState extends State<AddDonationScreen> {
     super.initState();
     // Set default location
     _locationController.text = 'My Location, City';
+
+    // Handle prefilled data from expiry verification
+    if (widget.prefilledData != null) {
+      _populatePrefilledData();
+    }
+  }
+
+  void _populatePrefilledData() {
+    final data = widget.prefilledData!;
+
+    // Populate medicine name
+    if (data['medicine_name'] != null) {
+      _medicationNameController.text = data['medicine_name'];
+    }
+
+    // Populate expiry date
+    if (data['expiry_date'] != null) {
+      try {
+        final parts = data['expiry_date'].toString().split('/');
+        if (parts.length == 3) {
+          _expiryDate = DateTime(
+            int.parse(parts[2]), // year
+            int.parse(parts[1]), // month
+            int.parse(parts[0]), // day
+          );
+        }
+      } catch (e) {
+        print('Error parsing expiry date: $e');
+      }
+    }
+
+    // Populate manufacturer in notes
+    if (data['manufacturer'] != null) {
+      String notes = 'Manufacturer: ${data['manufacturer']}';
+      if (data['batch_number'] != null) {
+        notes += '\nBatch: ${data['batch_number']}';
+      }
+      if (data['manufacturing_date'] != null) {
+        notes += '\nMfg Date: ${data['manufacturing_date']}';
+      }
+      _notesController.text = notes;
+    }
   }
 
   @override
