@@ -1,4 +1,4 @@
-# MediMatch
+# MediMatch Ai+
 
 MediMatch is an AI-powered medicine assistant app built with Flutter. It helps users understand their prescriptions, find generic alternatives, check for drug interactions, and manage their medication schedule.
 
