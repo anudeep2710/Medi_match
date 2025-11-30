@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:medimatch/models/health_tips.dart';
 
 class MedicalAssistantApiService {
-  static const String apiUrl = 'https://us-central1-said-eb2f5.cloudfunctions.net/gemini_medical_assistant';
+  static const String apiUrl = 'https://us-central1-medimatch-f446c.cloudfunctions.net/gemini_medical_assistant';
 
   /// Converts an image file to base64 encoding
   Future<String> imageToBase64(File imageFile) async {

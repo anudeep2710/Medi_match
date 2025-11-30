@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import 'package:medimatch/providers/auth_provider.dart';
 import 'package:medimatch/screens/home_screen.dart';
 import 'package:medimatch/screens/login_screen.dart';
-import 'package:medimatch/utils/firebase_test.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -181,49 +180,6 @@ class _SignupScreenState extends State<SignupScreen> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 16),
-
-                  // Debug Firebase Button (only in debug mode)
-                  if (kDebugMode)
-                    OutlinedButton.icon(
-                      onPressed: () async {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Running Firebase diagnostics... Check console for details.'),
-                            backgroundColor: Colors.blue,
-                          ),
-                        );
-                        await FirebaseTest.printFirebaseStatus();
-
-                        // Test with current form data if available
-                        if (_emailController.text.isNotEmpty && _passwordController.text.isNotEmpty) {
-                          final testResults = await FirebaseTest.testUserRegistration(
-                            _emailController.text.trim(),
-                            _passwordController.text,
-                          );
-
-                          if (context.mounted) {
-                            final success = testResults['registration_success'] ?? false;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(success
-                                  ? 'Firebase test successful!'
-                                  : 'Firebase test failed: ${testResults['error_code'] ?? 'Unknown error'}'
-                                ),
-                                backgroundColor: success ? Colors.green : Colors.red,
-                                duration: const Duration(seconds: 5),
-                              ),
-                            );
-                          }
-                        }
-                      },
-                      icon: const Icon(Icons.bug_report),
-                      label: const Text('Test Firebase'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.orange,
-                      ),
-                    ),
-
                   const SizedBox(height: 24),
 
                   // Sign up button

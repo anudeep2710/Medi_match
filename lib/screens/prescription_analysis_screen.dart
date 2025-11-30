@@ -1,13 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:uuid/uuid.dart';
-import 'package:medimatch/models/prescription.dart';
-import 'package:medimatch/models/medicine.dart';
-import 'package:medimatch/providers/prescription_provider.dart';
 import 'package:medimatch/providers/medical_assistant_provider.dart';
 import 'package:medimatch/screens/medication_analysis_screen.dart';
-import 'package:medimatch/screens/prescription_result_screen.dart';
 import 'package:medimatch/services/medical_assistant_api_service.dart';
 
 class PrescriptionAnalysisScreen extends StatefulWidget {
@@ -227,24 +222,7 @@ class _PrescriptionAnalysisScreenState extends State<PrescriptionAnalysisScreen>
             ],
           ),
 
-          const SizedBox(height: 12),
 
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    _proceedToStandardProcessing();
-                  },
-                  icon: const Icon(Icons.arrow_forward),
-                  label: const Text('Continue to Standard Processing'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                ),
-              ),
-            ],
-          ),
 
           const SizedBox(height: 24),
 
@@ -332,101 +310,4 @@ class _PrescriptionAnalysisScreenState extends State<PrescriptionAnalysisScreen>
     );
   }
 
-  void _proceedToStandardProcessing() async {
-    setState(() {
-      _isAnalyzing = true;
-    });
-
-    try {
-      final prescriptionProvider = Provider.of<PrescriptionProvider>(
-        context,
-        listen: false,
-      );
-
-      // Get the medications from the medical assistant provider
-      final medicalAssistantProvider = Provider.of<MedicalAssistantProvider>(
-        context,
-        listen: false
-      );
-
-      // First try to use the standard prescription scanning
-      final prescription = await prescriptionProvider.scanPrescription(
-        widget.imageFile,
-        widget.patientName,
-      );
-
-      if (prescription != null && mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PrescriptionResultScreen(
-              prescription: prescription,
-            ),
-          ),
-        );
-      } else {
-        // If standard processing fails, create a basic prescription from the AI-detected medications
-        if (medicalAssistantProvider.medications.isNotEmpty && mounted) {
-          // Convert MedicationAnalysis to Medicine objects
-          final medicines = medicalAssistantProvider.medications.map((med) {
-            return Medicine(
-              name: med.name,
-              dosage: '',  // We don't have dosage information from the AI
-              instructions: med.purpose,
-              genericName: med.alternatives.isNotEmpty ? med.alternatives.first.name : '',
-              genericPrice: med.alternatives.isNotEmpty ? med.alternatives.first.price.toDouble() : null,
-              brandPrice: null,
-            );
-          }).toList();
-
-          // Create a new prescription
-          final newPrescription = Prescription(
-            id: const Uuid().v4(),
-            patientName: widget.patientName,
-            date: DateTime.now(),
-            medicines: medicines,
-            rawOcrText: medicalAssistantProvider.lastResponse?.response ?? '',
-          );
-
-          // Save the prescription
-          await prescriptionProvider.savePrescription(newPrescription);
-
-          if (mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => PrescriptionResultScreen(
-                  prescription: newPrescription,
-                ),
-              ),
-            );
-          }
-        } else if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                prescriptionProvider.error ?? 'Failed to process prescription',
-              ),
-              backgroundColor: Colors.red,
-            ),
-          );
-          setState(() {
-            _isAnalyzing = false;
-          });
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        setState(() {
-          _isAnalyzing = false;
-        });
-      }
-    }
-  }
 }

@@ -23,7 +23,6 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final firebase_chat.FirebaseChatService _chatService = firebase_chat.FirebaseChatService();
   final ScrollController _scrollController = ScrollController();
-  final bool _isTyping = false; // Future: implement typing indicator
 
   @override
   void initState() {
@@ -79,31 +78,6 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
         backgroundColor: Colors.teal,
         foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.videocam),
-            onPressed: () {
-              // Future: Video call feature
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Video call feature coming soon!')),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.call),
-            onPressed: () {
-              // Future: Voice call feature
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Voice call feature coming soon!')),
-              );
-            },
-          ),
-          if (widget.isGroupChat)
-            IconButton(
-              icon: const Icon(Icons.group_add),
-              onPressed: () => _showAddMembersDialog(context),
-            ),
-        ],
       ),
       body: SafeArea(
         child: Column(
@@ -154,9 +128,6 @@ class _ChatScreenState extends State<ChatScreen> {
                 },
               ),
             ),
-
-            // Typing indicator
-            if (_isTyping) _buildTypingIndicator(),
 
             // Message input
             _buildMessageInput(),
@@ -294,48 +265,6 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildTypingIndicator() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '${widget.targetUserName} is typing',
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Removed old _buildMessageBubble method - using _buildFirebaseMessageBubble instead
-
   Widget _buildMessageInput() {
     return Container(
       padding: const EdgeInsets.all(12.0),
@@ -352,18 +281,6 @@ class _ChatScreenState extends State<ChatScreen> {
       child: SafeArea(
         child: Row(
           children: [
-            // Attachment button
-            IconButton(
-              onPressed: () {
-                _showAttachmentOptions();
-              },
-              icon: Icon(
-                Icons.add_circle_outline,
-                color: Colors.teal,
-                size: 28,
-              ),
-            ),
-            const SizedBox(width: 8),
             // Message input field
             Expanded(
               child: Container(
@@ -383,18 +300,6 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    suffixIcon: IconButton(
-                      onPressed: () {
-                        // Future: Voice message feature
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Voice message feature coming soon!')),
-                        );
-                      },
-                      icon: Icon(
-                        Icons.mic,
-                        color: Colors.teal,
-                      ),
-                    ),
                   ),
                   textInputAction: TextInputAction.send,
                   onSubmitted: (_) => _sendMessage(),
@@ -422,124 +327,6 @@ class _ChatScreenState extends State<ChatScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  void _showAttachmentOptions() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Share Content',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildAttachmentOption(
-                  icon: Icons.medication,
-                  label: 'Medicine Info',
-                  color: Colors.green,
-                  onTap: () {
-                    Navigator.pop(context);
-                    _shareMedicineInfo();
-                  },
-                ),
-                _buildAttachmentOption(
-                  icon: Icons.camera_alt,
-                  label: 'Camera',
-                  color: Colors.blue,
-                  onTap: () {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Camera feature coming soon!')),
-                    );
-                  },
-                ),
-                _buildAttachmentOption(
-                  icon: Icons.photo_library,
-                  label: 'Gallery',
-                  color: Colors.purple,
-                  onTap: () {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Gallery feature coming soon!')),
-                    );
-                  },
-                ),
-                _buildAttachmentOption(
-                  icon: Icons.location_on,
-                  label: 'Location',
-                  color: Colors.red,
-                  onTap: () {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Location sharing coming soon!')),
-                    );
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAttachmentOption({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(icon, color: color, size: 28),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _shareMedicineInfo() {
-    // Future: Integration with medicine database
-    _messageController.text = '💊 I have some medicine available for sharing. ';
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Medicine sharing integration coming soon!')),
     );
   }
 
@@ -600,23 +387,6 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  void _showAddMembersDialog(BuildContext context) {
-    // This is a placeholder for adding members to a group chat
-    // In a real implementation, you would show a list of users to add
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Members'),
-        content: const Text('This feature will allow you to add members to the group chat.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 // ChatMessage class is now imported from firebase_chat_service.dart

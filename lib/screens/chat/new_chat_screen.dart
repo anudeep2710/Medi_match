@@ -146,73 +146,6 @@ class _NewChatScreenState extends State<NewChatScreen> {
     }
   }
 
-  Future<void> _createTestUsers() async {
-    try {
-      final firestore = FirebaseFirestore.instance;
-
-      // Test users to create
-      final testUsers = [
-        {
-          'uid': 'test_user_1',
-          'displayName': 'Dr. Sarah Johnson',
-          'email': 'sarah.johnson@medimatch.com',
-          'photoUrl': null,
-          'location': 'New York, NY',
-          'isOnline': true,
-          'lastSeen': FieldValue.serverTimestamp(),
-          'createdAt': FieldValue.serverTimestamp(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-        {
-          'uid': 'test_user_2',
-          'displayName': 'Mike Chen',
-          'email': 'mike.chen@medimatch.com',
-          'photoUrl': null,
-          'location': 'San Francisco, CA',
-          'isOnline': false,
-          'lastSeen': FieldValue.serverTimestamp(),
-          'createdAt': FieldValue.serverTimestamp(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-        {
-          'uid': 'test_user_3',
-          'displayName': 'Emily Rodriguez',
-          'email': 'emily.rodriguez@medimatch.com',
-          'photoUrl': null,
-          'location': 'Los Angeles, CA',
-          'isOnline': true,
-          'lastSeen': FieldValue.serverTimestamp(),
-          'createdAt': FieldValue.serverTimestamp(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-      ];
-
-      // Create users in Firestore
-      for (final userData in testUsers) {
-        final uid = userData['uid'] as String;
-        await firestore.collection('users').doc(uid).set(userData);
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Test users created! Try searching for "Sarah", "Mike", or "Emily"'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 4),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Error creating test users: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -377,28 +310,10 @@ class _NewChatScreenState extends State<NewChatScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          Text(
+          const Text(
             'Try searching with a different name',
             style: TextStyle(
-              color: Colors.grey.shade500,
-            ),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: _createTestUsers,
-            icon: const Icon(Icons.add_circle_outline),
-            label: const Text('Create Test Users'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.teal,
-              foregroundColor: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'For development testing only',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey.shade400,
+              color: Colors.grey,
             ),
           ),
         ],
